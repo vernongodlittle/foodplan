@@ -465,7 +465,8 @@ let nextId = 25;
 
 // Week state
 let weekOffset = 0;
-let weekMenu = {}; // {dayIndex: {breakfast, lunch, dinner, snack}} where each value is {recipeId, isLeftover}
+let allMenus = {}; // {weekOffset: {dayIndex: {breakfast,lunch,dinner,snack}}}
+let weekMenu = {}; // current week's menu (alias into allMenus[weekOffset])
 let shoppingChecked = {};
 let currentSwapSlot = null;
 let activeFilters = new Set(['all']);
@@ -496,7 +497,19 @@ function getWeekDates(){
 }
 
 function formatDate(d){return d.getDate()+' '+ ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'][d.getMonth()]}
-function changeWeek(dir){weekOffset+=dir;renderWeek()}
+async function changeWeek(dir){
+  // Save current week before switching
+  allMenus[weekOffset]=weekMenu;
+  weekOffset+=dir;
+  // Load the new week's menu
+  weekMenu=allMenus[weekOffset]||{};
+  renderWeek();
+  buildShoppingList();
+  // If new week is empty — auto-generate
+  if(Object.keys(weekMenu).length===0){
+    await generateMenu();
+  }
+}
 
 function getAvailable(meal){
   return recipes.filter(r=>{
@@ -618,9 +631,10 @@ async function loadFromStorage(){
 }
 
 async function saveMenuToStorage(){
-  try{localStorage.setItem(LS_MENU,JSON.stringify({weekMenu,shoppingChecked}));}catch(e){}
+  allMenus[weekOffset]=weekMenu;
+  try{localStorage.setItem(LS_MENU,JSON.stringify({allMenus,shoppingChecked}));}catch(e){}
   try{
-    await supaUpsert('app_state',{key:'menu',data:{weekMenu,shoppingChecked},updated_at:new Date().toISOString()});
+    await supaUpsert('app_state',{key:'menu',data:{allMenus,shoppingChecked},updated_at:new Date().toISOString()});
   }catch(e){console.warn('[Неделя] Menu save failed:',e);}
 }
 
@@ -628,16 +642,22 @@ async function loadMenuFromStorage(){
   try{
     const rows=await supaGet('app_state',{key:'menu'});
     if(rows&&rows.length&&rows[0].data){
-      weekMenu=rows[0].data.weekMenu||{};
+      allMenus=rows[0].data.allMenus||{};
       shoppingChecked=rows[0].data.shoppingChecked||{};
-      localStorage.setItem(LS_MENU,JSON.stringify({weekMenu,shoppingChecked}));
+      weekMenu=allMenus[weekOffset]||{};
+      localStorage.setItem(LS_MENU,JSON.stringify({allMenus,shoppingChecked}));
       return;
     }
   }catch(e){}
   // Fallback to localStorage
   try{
     const raw=localStorage.getItem(LS_MENU);
-    if(raw){const d=JSON.parse(raw);weekMenu=d.weekMenu||{};shoppingChecked=d.shoppingChecked||{};}
+    if(raw){
+      const d=JSON.parse(raw);
+      allMenus=d.allMenus||{};
+      shoppingChecked=d.shoppingChecked||{};
+      weekMenu=allMenus[weekOffset]||{};
+    }
   }catch(e){}
 }
 
@@ -660,7 +680,12 @@ async function loadMenuFromStorage(){
 (function(){
   try{
     const raw=localStorage.getItem(LS_MENU);
-    if(raw){const d=JSON.parse(raw);weekMenu=d.weekMenu||{};shoppingChecked=d.shoppingChecked||{};}
+    if(raw){
+      const d=JSON.parse(raw);
+      allMenus=d.allMenus||{};
+      shoppingChecked=d.shoppingChecked||{};
+      weekMenu=allMenus[weekOffset]||{};
+    }
   }catch(e){}
 })();
 
@@ -684,35 +709,41 @@ async function generateMenu(){
   await new Promise(r=>setTimeout(r,1200));
   clearInterval(iv);
 
-  weekMenu={};
+  weekMenu={}; // reset current week only
   const cookDays=COOK_DAYS;
 
-  // Track usage count per recipe: max 2 (1 cook day + 1 leftover day)
-  const usedCount={};
-  function canUse(id){ return !usedCount[id]||usedCount[id]<2; }
-  function markUsed(id){ usedCount[id]=(usedCount[id]||0)+1; }
-
-  // Store what each cook day cooked, so next day can take leftovers once
+  // usedAsMain: recipes already chosen as "fresh cook" — never repeat across cook days
+  const usedAsMain=new Set();
+  // usedBF/SN: breakfast and snack ids used this week
+  const usedBF=new Set(), usedSN=new Set();
+  // cookDayMeals: what each cook day prepared
   const cookDayMeals={};
+  // leftoverGiven: whether a cook day's leftover has been assigned
   const leftoverGiven={};
   cookDays.forEach(cd=>{ leftoverGiven[cd]={lunch:false,dinner:false}; });
 
-  const usedBF=new Set(), usedSN=new Set();
-
-  // Pass 1: assign cook days
+  // Pass 1: assign cook days — each gets a UNIQUE recipe never used as main before
   for(let ci=0;ci<cookDays.length;ci++){
     const d=cookDays[ci];
-    const avLu=getAvailable('lunch').filter(r=>canUse(r.id));
-    const lu=pickRandom(avLu.length?avLu:getAvailable('lunch'));
-    const avDi=getAvailable('dinner').filter(r=>canUse(r.id)&&(!lu||r.id!==lu.id));
+
+    // Lunch: not used as main yet, prefer higher rated
+    const avLu=getAvailable('lunch').filter(r=>!usedAsMain.has(r.id));
+    const lu=pickRandom(avLu.length?avLu:getAvailable('lunch').filter(r=>!usedAsMain.has(r.id)||true));
+
+    // Dinner: not used as main, not same as lunch
+    const avDi=getAvailable('dinner').filter(r=>!usedAsMain.has(r.id)&&(!lu||r.id!==lu.id));
     const di=pickRandom(avDi.length?avDi:getAvailable('dinner').filter(r=>!lu||r.id!==lu.id));
+
+    // Breakfast: unique this week
     const avBF=getAvailable('breakfast').filter(r=>!usedBF.has(r.id));
     const bf=pickRandom(avBF.length?avBF:getAvailable('breakfast'));
+
+    // Snack: unique this week
     const avSN=getAvailable('snack').filter(r=>!usedSN.has(r.id));
     const sn=pickRandom(avSN.length?avSN:getAvailable('snack'));
 
-    if(lu){markUsed(lu.id);lu.timesUsed++;}
-    if(di){markUsed(di.id);di.timesUsed++;}
+    if(lu){usedAsMain.add(lu.id);lu.timesUsed++;}
+    if(di){usedAsMain.add(di.id);di.timesUsed++;}
     if(bf) usedBF.add(bf.id);
     if(sn) usedSN.add(sn.id);
 
@@ -725,30 +756,31 @@ async function generateMenu(){
     };
   }
 
-  // Pass 2: assign non-cook days
+  // Pass 2: non-cook days get leftovers from THEIR OWN preceding cook day only once
   for(let d=0;d<7;d++){
     if(cookDays.includes(d)) continue;
     const prevCook=cookDays.filter(cd=>cd<d).slice(-1)[0];
     let lunchId=null, dinnerId=null, lunchIsLeft=false, dinnerIsLeft=false;
 
+    // Give leftover from preceding cook day — only once
     if(prevCook!==undefined&&!leftoverGiven[prevCook].lunch){
       lunchId=cookDayMeals[prevCook].lunchId;
-      if(lunchId){markUsed(lunchId);leftoverGiven[prevCook].lunch=true;lunchIsLeft=true;}
+      if(lunchId){leftoverGiven[prevCook].lunch=true;lunchIsLeft=true;}
     }
     if(prevCook!==undefined&&!leftoverGiven[prevCook].dinner){
       dinnerId=cookDayMeals[prevCook].dinnerId;
-      if(dinnerId){markUsed(dinnerId);leftoverGiven[prevCook].dinner=true;dinnerIsLeft=true;}
+      if(dinnerId){leftoverGiven[prevCook].dinner=true;dinnerIsLeft=true;}
     }
-    // If no leftover (second non-cook day after same cook day), pick a fresh unique recipe
+    // Second non-cook day after same cook day: pick fresh recipe not used as main
     if(!lunchId){
-      const av=getAvailable('lunch').filter(r=>canUse(r.id));
+      const av=getAvailable('lunch').filter(r=>!usedAsMain.has(r.id));
       const r=pickRandom(av.length?av:getAvailable('lunch'));
-      if(r){lunchId=r.id;markUsed(r.id);}
+      if(r){lunchId=r.id;usedAsMain.add(r.id);}
     }
     if(!dinnerId){
-      const av=getAvailable('dinner').filter(r=>canUse(r.id));
+      const av=getAvailable('dinner').filter(r=>!usedAsMain.has(r.id));
       const r=pickRandom(av.length?av:getAvailable('dinner'));
-      if(r){dinnerId=r.id;markUsed(r.id);}
+      if(r){dinnerId=r.id;usedAsMain.add(r.id);}
     }
 
     const avBF=getAvailable('breakfast').filter(r=>r.time<=10&&!usedBF.has(r.id));
@@ -783,13 +815,15 @@ document.addEventListener('DOMContentLoaded',async function(){
   renderFilters();
   if(Object.keys(weekMenu).length===0) generateMenu();
 
-  // Then load from Supabase and re-render if data changed
+  // Then load from Supabase and re-render
   const prevCount=recipes.length;
   await Promise.all([loadFromStorage(), loadMenuFromStorage()]);
-  if(recipes.length!==prevCount||Object.keys(weekMenu).length>0){
-    renderWeek();
-    renderFilters();
-  }
+  // After cloud load, sync weekMenu for current offset
+  weekMenu=allMenus[weekOffset]||{};
+  if(Object.keys(weekMenu).length===0) await generateMenu();
+  renderWeek();
+  renderFilters();
+  buildShoppingList();
   showToast('Загружено ' + recipes.length + ' рецептов');
 });
 
@@ -962,6 +996,7 @@ function applySwap(recipeId){
   const {dayIdx,mealType}=currentSwapSlot;
   if(!weekMenu[dayIdx])weekMenu[dayIdx]={};
   weekMenu[dayIdx][mealType]={recipeId,isLeftover:false};
+  allMenus[weekOffset]=weekMenu;
   closeModal('swap-modal');
   buildShoppingList();
   saveMenuToStorage();

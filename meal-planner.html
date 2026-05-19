@@ -6,6 +6,14 @@
 <title>НЕДЕЛЯ — планировщик питания</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
+@font-face {
+  font-family: 'Bonche';
+  src: url('https://raw.githubusercontent.com/vernongodlittle/foodplan/main/Bonche-Light.otf') format('opentype');
+  font-weight: 300;
+  font-display: swap;
+}
+</style>
+<style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#F2EDE3;--ink:#1A1A18;--border:#1A1A18;--border-light:#D8D4CA;--surface:#F2EDE3;--muted:#888;--hint:#bbb}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);font-size:14px}
@@ -14,7 +22,7 @@ input,textarea{cursor:text}
 
 /* TOPBAR */
 .topbar{background:var(--ink);display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:54px;position:sticky;top:0;z-index:100;border-bottom:1.5px solid #2a2a28}
-.logo{font-family:Georgia,serif;font-size:16px;color:var(--bg);letter-spacing:4px;text-transform:uppercase}
+.logo{font-family:'Bonche',Georgia,serif;font-size:18px;color:var(--bg);letter-spacing:4px;text-transform:uppercase}
 .nav{display:flex}
 .nav-btn{padding:5px 18px;font-size:11px;font-weight:500;letter-spacing:1.2px;text-transform:uppercase;background:transparent;color:#666;border:none;transition:all .15s}
 .nav-btn.active{background:var(--bg);color:var(--ink)}
@@ -32,28 +40,33 @@ input,textarea{cursor:text}
 .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
 .stat-card{border:1.5px solid var(--border);padding:14px 16px;background:var(--surface)}
 .stat-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-.stat-val{font-family:Georgia,serif;font-size:32px;font-weight:300;letter-spacing:-1px;color:var(--ink)}
+.stat-val{font-family:'Bonche',Georgia,serif;font-size:32px;font-weight:300;letter-spacing:-1px;color:var(--ink)}
 .stat-unit{font-size:12px;color:var(--muted);margin-left:4px}
 .stat-bar{height:2px;background:var(--border-light);margin-top:8px}
 .stat-fill{height:100%;background:var(--ink);transition:width .3s}
 
 /* WEEK */
 .week-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.week-title{font-family:Georgia,serif;font-size:20px;letter-spacing:-.5px}
+.week-title{font-family:'Bonche',Georgia,serif;font-size:20px;letter-spacing:-.5px}
 .week-nav{display:flex;align-items:center;gap:8px}
 .week-nav button{padding:4px 12px;border:1.5px solid var(--border);background:transparent;color:var(--muted);font-size:12px}
 .week-nav button:hover{background:var(--ink);color:var(--bg)}
 .week-nav span{font-size:11px;color:var(--muted);min-width:110px;text-align:center;letter-spacing:.5px}
 .week-layout{display:grid;grid-template-columns:1fr 230px;gap:20px}
 
-.col-headers{display:grid;grid-template-columns:52px repeat(5,1fr);gap:8px;margin-bottom:6px}
+.col-headers{display:grid;grid-template-columns:52px repeat(4,1fr);gap:8px;margin-bottom:6px}
 .col-hdr{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--hint);text-align:center;padding-bottom:4px;border-bottom:1px solid var(--border)}
-.day-row{display:grid;grid-template-columns:52px repeat(5,1fr);gap:8px;margin-bottom:8px}
+.day-row{display:grid;grid-template-columns:52px repeat(4,1fr);gap:8px;margin-bottom:8px}
 
 .day-lbl{display:flex;flex-direction:column;align-items:center;justify-content:center}
 .day-name{font-size:9px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
-.day-num{font-family:Georgia,serif;font-size:24px;font-weight:300;color:var(--ink);line-height:1.1}
+.day-num{font-family:'Bonche',Georgia,serif;font-size:24px;font-weight:300;color:var(--ink);line-height:1.1}
 .day-lbl.cook .day-num{font-weight:400}
+.day-row.cook-row .meal-cell{border-color:#1A1A18}
+.day-row.cook-row .day-lbl .day-num{color:#5B6E3A}
+.day-row.cook-row .day-lbl .day-name{color:#5B6E3A}
+.day-row.cook-row .day-lbl .cook-dot{background:#5B6E3A}
+.cook-day-bg{background:#F5F3EA!important}
 .cook-dot{width:5px;height:5px;border-radius:50%;background:var(--ink);margin-top:3px}
 
 .meal-cell{border:1.5px solid var(--border);padding:10px 12px;min-height:95px;display:flex;flex-direction:column;position:relative;background:var(--surface);transition:background .12s}
@@ -86,7 +99,7 @@ input,textarea{cursor:text}
 
 /* RECIPES */
 .recipes-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-.recipes-head h2{font-family:Georgia,serif;font-size:22px;letter-spacing:-.5px;flex:1}
+.recipes-head h2{font-family:'Bonche',Georgia,serif;font-size:22px;letter-spacing:-.5px;flex:1}
 .search-box{display:flex;align-items:center;gap:8px;border:1.5px solid var(--border);padding:6px 12px;background:var(--surface)}
 .search-box input{border:none;outline:none;font-size:13px;color:var(--ink);width:180px;background:transparent}
 .add-btn{background:var(--ink);color:var(--bg);border:none;padding:8px 16px;font-size:11px;font-weight:600;letter-spacing:1.2px;text-transform:uppercase;white-space:nowrap}
@@ -119,7 +132,7 @@ input,textarea{cursor:text}
 .modal{background:var(--bg);border:1.5px solid var(--border);max-width:560px;width:100%;max-height:90vh;overflow-y:auto}
 .modal-sm{max-width:420px}
 .modal-head{padding:20px 24px 0;display:flex;align-items:flex-start;justify-content:space-between}
-.modal-head h3{font-family:Georgia,serif;font-size:18px;letter-spacing:-.3px}
+.modal-head h3{font-family:'Bonche',Georgia,serif;font-size:18px;letter-spacing:-.3px}
 .modal-close{font-size:18px;color:var(--muted);background:transparent;border:none;padding:2px}
 .modal-close:hover{color:var(--ink)}
 .modal-body{padding:18px 24px 24px}
@@ -137,7 +150,7 @@ textarea.form-input{resize:vertical;min-height:70px}
 .detail-tags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .detail-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
 .detail-meta-box{border:1.5px solid var(--border-light);padding:10px;text-align:center}
-.detail-meta-val{font-family:Georgia,serif;font-size:22px;font-weight:300;color:var(--ink)}
+.detail-meta-val{font-family:'Bonche',Georgia,serif;font-size:22px;font-weight:300;color:var(--ink)}
 .detail-meta-lbl{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-top:2px}
 .detail-section{font-size:10px;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px;margin-top:14px;padding-bottom:4px;border-bottom:1px solid var(--border-light)}
 .ingr-grid{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px}
@@ -205,8 +218,7 @@ textarea.form-input{resize:vertical;min-height:70px}
           <div class="col-hdr">Завтрак</div>
           <div class="col-hdr">Обед</div>
           <div class="col-hdr">Ужин</div>
-          <div class="col-hdr">Перекус</div>
-          <div class="col-hdr">Десерт</div>
+          <div class="col-hdr">Перекус / Десерт</div>
         </div>
         <div id="week-grid"></div>
       </div>
@@ -375,13 +387,13 @@ async function dbGet(key){try{const r=await fetch(`${SUPA_URL}/rest/v1/app_state
 async function dbSet(key,data){try{await fetch(`${SUPA_URL}/rest/v1/app_state`,{method:'POST',headers:SH,body:JSON.stringify({key,data,updated_at:new Date().toISOString()})});}catch(e){console.warn(e);}}
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────
-const MEAL_LABELS={breakfast:'Завтрак',lunch:'Обед',dinner:'Ужин',snack:'Перекус',dessert:'Десерт'};
+const MEAL_LABELS={breakfast:'Завтрак',lunch:'Обед',dinner:'Ужин',snack_dessert:'Перекус / Десерт',snack:'Перекус',dessert:'Десерт'};
 const CUISINE_LABELS={eu:'Европейская',as:'Азиатская',med:'Средиземноморская',mex:'Мексиканская',tr:'Турецкая'};
 const DAYS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 const DAYS_FULL=['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
 const MONTHS=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
 const COOK_DAYS=[0,2,4];
-const MEAL_TYPES=['breakfast','lunch','dinner','snack','dessert'];
+const MEAL_TYPES=['breakfast','lunch','dinner','snack_dessert'];
 
 // ── DEFAULT RECIPES ───────────────────────────────────────────────────────
 const DEFAULT_RECIPES=[
@@ -540,7 +552,7 @@ async function generateMenu(){
     .sort((a,b)=>b.rating-a.rating-(a.timesUsed-b.timesUsed)*0.5);
 
   const usedMain=new Set();
-  const usedBF=new Set(),usedSN=new Set(),usedDS=new Set();
+  const usedBF=new Set(),usedSN=new Set();
   const cookMeals={};
   const leftGiven={};
   COOK_DAYS.forEach(cd=>{leftGiven[cd]={lunch:false,dinner:false};});
@@ -553,20 +565,18 @@ async function generateMenu(){
     const avDi=avail('dinner').filter(r=>!usedMain.has(r.id)&&(!lu||r.id!==lu.id));
     const di=pickRandom(avDi.length?avDi:avail('dinner').filter(r=>!lu||r.id!==lu.id));
     const bf=pickRandom(avail('breakfast').filter(r=>!usedBF.has(r.id)));
-    const sn=pickRandom(avail('snack').filter(r=>!usedSN.has(r.id)));
-    const ds=pickRandom(avail('dessert').filter(r=>!usedDS.has(r.id)));
+    const sndsPool=recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned&&!usedSN.has(r.id));
+    const snds=pickRandom(sndsPool.length?sndsPool:recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned));
     if(lu){usedMain.add(lu.id);lu.timesUsed++;}
     if(di){usedMain.add(di.id);di.timesUsed++;}
     if(bf) usedBF.add(bf.id);
-    if(sn) usedSN.add(sn.id);
-    if(ds) usedDS.add(ds.id);
+    if(snds) usedSN.add(snds.id);
     cookMeals[d]={lunchId:lu?.id,dinnerId:di?.id};
     newMenu[d]={
       breakfast:{recipeId:bf?.id,isLeftover:false},
       lunch:{recipeId:lu?.id,isLeftover:false},
       dinner:{recipeId:di?.id,isLeftover:false},
-      snack:{recipeId:sn?.id,isLeftover:false},
-      dessert:{recipeId:ds?.id,isLeftover:false},
+      snack_dessert:{recipeId:snds?.id,isLeftover:false},
     };
   }
 
@@ -589,16 +599,14 @@ async function generateMenu(){
     const aBF=avail('breakfast').filter(r=>!usedBF.has(r.id));
     const bf=pickRandom(qBF.length?qBF:aBF.length?aBF:avail('breakfast'));
     if(bf) usedBF.add(bf.id);
-    const sn=pickRandom(avail('snack').filter(r=>!usedSN.has(r.id)));
-    if(sn) usedSN.add(sn.id);
-    const ds=pickRandom(avail('dessert').filter(r=>!usedDS.has(r.id)));
-    if(ds) usedDS.add(ds.id);
+    const sndsPool2=recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned&&!usedSN.has(r.id));
+    const snds2=pickRandom(sndsPool2.length?sndsPool2:recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned));
+    if(snds2) usedSN.add(snds2.id);
     newMenu[d]={
       breakfast:{recipeId:bf?.id,isLeftover:false},
       lunch:{recipeId:lunchId,isLeftover:lunchLeft},
       dinner:{recipeId:dinnerId,isLeftover:dinnerLeft},
-      snack:{recipeId:sn?.id,isLeftover:false},
-      dessert:{recipeId:ds?.id,isLeftover:false},
+      snack_dessert:{recipeId:snds?.id,isLeftover:false},
     };
   }
 
@@ -639,7 +647,7 @@ function renderWeek(){
     const isCook=COOK_DAYS.includes(d);
     const dayData=wm[d]||{};
     const row=document.createElement('div');
-    row.className='day-row';
+    row.className='day-row'+(isCook?' cook-row':'');
 
     // Day label
     const lbl=document.createElement('div');
@@ -669,7 +677,7 @@ function renderWeek(){
           <button class="mc-swap" onclick="event.stopPropagation();openSwap(${d},'${mt}')">↻ Заменить</button>`;
         if(!slot.isLeftover){totProt+=r.protein;mealCnt++;cuisines.add(r.cuisine);if(isCook)cookTime+=r.time;}
       } else {
-        cell.className='empty-cell';
+        cell.className='empty-cell'+(isCook?' cook-day-bg':'');
         cell.innerHTML='+';
         cell.onclick=()=>openSwap(d,mt);
       }
@@ -696,8 +704,11 @@ function renderWeek(){
 function openSwap(dayIdx,mealType){
   currentSwapSlot={dayIdx,mealType};
   document.getElementById('swap-slot-name').textContent=DAYS_FULL[dayIdx]+' — '+MEAL_LABELS[mealType];
-  const opts=recipes.filter(r=>getMeals(r).includes(mealType)&&!r.banned)
-    .sort((a,b)=>b.rating-a.rating).slice(0,10);
+  // For snack_dessert slot show both snack and dessert recipes
+  const mealFilter=mealType==='snack_dessert'
+    ?r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned
+    :r=>getMeals(r).includes(mealType)&&!r.banned;
+  const opts=recipes.filter(mealFilter).sort((a,b)=>b.rating-a.rating).slice(0,10);
   document.getElementById('swap-options').innerHTML=opts.map(r=>`
     <div class="swap-option" onclick="applySwap(${r.id})">
       <div style="flex:1">
@@ -712,9 +723,24 @@ function openSwap(dayIdx,mealType){
 async function applySwap(recipeId){
   if(!currentSwapSlot) return;
   const {dayIdx,mealType}=currentSwapSlot;
-  const wm=allMenus[weekOffset]||{};
-  const newMenu={...wm,[dayIdx]:{...(wm[dayIdx]||{}),[mealType]:{recipeId,isLeftover:false}}};
-  allMenus={...allMenus,[weekOffset]:newMenu};
+  const wm={...allMenus[weekOffset]||{}};
+
+  // Update the swapped slot
+  wm[dayIdx]={...(wm[dayIdx]||{}),[mealType]:{recipeId,isLeftover:false}};
+
+  // If this is a cook day — also update leftover days that had the OLD recipe
+  if(COOK_DAYS.includes(dayIdx)){
+    const oldRecipeId=(allMenus[weekOffset]||{})[dayIdx]?.[mealType]?.recipeId;
+    for(let d=0;d<7;d++){
+      if(COOK_DAYS.includes(d)) continue;
+      const prevCook=COOK_DAYS.filter(cd=>cd<d).slice(-1)[0];
+      if(prevCook===dayIdx && wm[d]?.[mealType]?.recipeId===oldRecipeId && wm[d]?.[mealType]?.isLeftover){
+        wm[d]={...wm[d],[mealType]:{recipeId,isLeftover:true}};
+      }
+    }
+  }
+
+  allMenus={...allMenus,[weekOffset]:wm};
   closeModal('swap-modal');
   await saveMenu();renderWeek();buildShoppingList();
   showToast('Блюдо заменено!');

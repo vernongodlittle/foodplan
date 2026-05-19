@@ -448,7 +448,8 @@ let allMenus={};
 let weekOffset=0;
 let nextId=26;
 let shoppingChecked={};
-let activeFilters=new Set(['all']);
+let activeMealFilter='all'; // 'all' or one of MEAL_FILTER_KEYS
+let activeCuisineFilter='all'; // 'all' or one of CUISINE_FILTER_KEYS
 let currentSwapSlot=null;
 let editingId=null;
 
@@ -851,21 +852,23 @@ const CUISINE_FILTER_KEYS=['eu','fr','it','ru','il','med','th','us','as','mex','
 
 function renderFilters(){
   const mealPills=MEAL_FILTER_KEYS.map(k=>
-    `<button class="filter-pill${activeFilters.has(k)?' active':''}" onclick="toggleFilter('${k}')">${FILTER_LABELS[k]}</button>`
+    `<button class="filter-pill${activeMealFilter===k?' active':''}" onclick="toggleFilter('${k}','meal')">${FILTER_LABELS[k]}</button>`
   ).join('');
-  // Only show cuisine keys that have at least one recipe
   const usedCuisines=new Set(recipes.map(r=>r.cuisine));
   const cuisinePills=CUISINE_FILTER_KEYS.filter(k=>usedCuisines.has(k)).map(k=>
-    `<button class="filter-pill${activeFilters.has(k)?' active':''}" onclick="toggleFilter('${k}')">${CUISINE_LABELS[k]}</button>`
+    `<button class="filter-pill${activeCuisineFilter===k?' active':''}" onclick="toggleFilter('${k}','cuisine')">${CUISINE_LABELS[k]}</button>`
   ).join('');
   document.getElementById('filter-bar').innerHTML=`
     <div class="filter-group"><span class="filter-group-label">Тип</span>${mealPills}</div>
     <div class="filter-group"><span class="filter-group-label">Кухня</span>${cuisinePills}</div>`;
 }
 
-function toggleFilter(f){
-  if(f==='all'){activeFilters=new Set(['all']);}
-  else{activeFilters.delete('all');activeFilters.has(f)?activeFilters.delete(f):activeFilters.add(f);if(!activeFilters.size)activeFilters.add('all');}
+function toggleFilter(f,group){
+  if(group==='meal'){
+    activeMealFilter=(activeMealFilter===f)?'all':f;
+  } else {
+    activeCuisineFilter=(activeCuisineFilter===f)?'all':f;
+  }
   renderRecipes();
 }
 
@@ -874,8 +877,9 @@ function renderRecipes(){
   const q=(document.getElementById('recipe-search')?.value||'').toLowerCase();
   const list=recipes.filter(r=>{
     const ms=getMeals(r);
-    const mf=activeFilters.has('all')||ms.some(m=>activeFilters.has(m))||activeFilters.has(r.cuisine);
-    return mf&&(!q||r.name.toLowerCase().includes(q));
+    const mealOk=activeMealFilter==='all'||ms.includes(activeMealFilter);
+    const cuisineOk=activeCuisineFilter==='all'||r.cuisine===activeCuisineFilter;
+    return mealOk&&cuisineOk&&(!q||r.name.toLowerCase().includes(q));
   });
   document.getElementById('recipes-grid').innerHTML=list.map(r=>`
     <div class="recipe-card${r.banned?' banned':''}" onclick="openDetail(${r.id})">

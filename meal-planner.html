@@ -37,7 +37,7 @@ input,textarea{cursor:text}
 .page.active{display:block}
 
 /* STATS */
-.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
 .stat-card{border:1.5px solid var(--border);padding:14px 16px;background:var(--surface)}
 .stat-lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
 .stat-val{font-family:'Bonche',Georgia,serif;font-size:32px;font-weight:300;letter-spacing:-1px;color:var(--ink)}
@@ -62,11 +62,11 @@ input,textarea{cursor:text}
 .day-name{font-size:9px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
 .day-num{font-family:'Bonche',Georgia,serif;font-size:24px;font-weight:300;color:var(--ink);line-height:1.1}
 .day-lbl.cook .day-num{font-weight:400}
-.day-row.cook-row .meal-cell{border-color:#1A1A18}
-.day-row.cook-row .day-lbl .day-num{color:#5B6E3A}
-.day-row.cook-row .day-lbl .day-name{color:#5B6E3A}
-.day-row.cook-row .day-lbl .cook-dot{background:#5B6E3A}
-.cook-day-bg{background:#F5F3EA!important}
+.day-row.cook-row .day-lbl .day-num{color:#4A6030;font-weight:500}
+.day-row.cook-row .day-lbl .day-name{color:#4A6030}
+.day-row.cook-row .day-lbl .cook-dot{background:#4A6030;width:6px;height:6px}
+.cook-day-bg{background:#EAE9DC!important;border-color:#A8B090!important}
+.day-row.cook-row .empty-cell{background:#EAE9DC;border-color:#C0C8A8}
 .cook-dot{width:5px;height:5px;border-radius:50%;background:var(--ink);margin-top:3px}
 
 .meal-cell{border:1.5px solid var(--border);padding:10px 12px;min-height:95px;display:flex;flex-direction:column;position:relative;background:var(--surface);transition:background .12s}
@@ -585,7 +585,7 @@ async function generateMenu(){
   const usedBF=new Set(),usedSN=new Set();
   const cookMeals={};
   const leftGiven={};
-  COOK_DAYS.forEach(cd=>{leftGiven[cd]={lunch:false,dinner:false};});
+  COOK_DAYS.forEach(cd=>{leftGiven[cd]={lunch:false,dinner:false,snack:false};});
   const newMenu={};
 
   // Cook days — unique main dishes
@@ -601,7 +601,8 @@ async function generateMenu(){
     if(di){usedMain.add(di.id);di.timesUsed++;}
     if(bf) usedBF.add(bf.id);
     if(snds) usedSN.add(snds.id);
-    cookMeals[d]={lunchId:lu?.id,dinnerId:di?.id};
+    // Store snackId so non-cook day can use as leftover
+    cookMeals[d]={lunchId:lu?.id,dinnerId:di?.id,snackId:snds?.id};
     newMenu[d]={
       breakfast:{recipeId:bf?.id,isLeftover:false},
       lunch:{recipeId:lu?.id,isLeftover:false},
@@ -610,11 +611,13 @@ async function generateMenu(){
     };
   }
 
-  // Non-cook days — leftovers for lunch/dinner, fresh BF/snack/dessert
+  // Non-cook days — leftovers for lunch/dinner/snack, fresh BF
   for(let d=0;d<7;d++){
     if(COOK_DAYS.includes(d)) continue;
     const prevCook=COOK_DAYS.filter(cd=>cd<d).slice(-1)[0];
-    let lunchId=null,dinnerId=null,lunchLeft=false,dinnerLeft=false;
+    let lunchId=null,dinnerId=null,snackId=null;
+    let lunchLeft=false,dinnerLeft=false,snackLeft=false;
+
     if(prevCook!==undefined&&!leftGiven[prevCook].lunch){
       lunchId=cookMeals[prevCook]?.lunchId;
       if(lunchId){leftGiven[prevCook].lunch=true;lunchLeft=true;}
@@ -623,20 +626,30 @@ async function generateMenu(){
       dinnerId=cookMeals[prevCook]?.dinnerId;
       if(dinnerId){leftGiven[prevCook].dinner=true;dinnerLeft=true;}
     }
+    if(prevCook!==undefined&&!leftGiven[prevCook].snack){
+      snackId=cookMeals[prevCook]?.snackId;
+      if(snackId){leftGiven[prevCook].snack=true;snackLeft=true;}
+    }
+
+    // If no leftover available (second non-cook day), pick fresh
     if(!lunchId){const r=pickRandom(avail('lunch').filter(r=>!usedMain.has(r.id)));if(r){lunchId=r.id;usedMain.add(r.id);}}
     if(!dinnerId){const r=pickRandom(avail('dinner').filter(r=>!usedMain.has(r.id)));if(r){dinnerId=r.id;usedMain.add(r.id);}}
+    if(!snackId){
+      const p=recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned&&!usedSN.has(r.id));
+      const r=pickRandom(p.length?p:recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned));
+      if(r){snackId=r.id;usedSN.add(r.id);}
+    }
+
     const qBF=avail('breakfast').filter(r=>r.time<=10&&!usedBF.has(r.id));
     const aBF=avail('breakfast').filter(r=>!usedBF.has(r.id));
     const bf=pickRandom(qBF.length?qBF:aBF.length?aBF:avail('breakfast'));
     if(bf) usedBF.add(bf.id);
-    const sndsPool2=recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned&&!usedSN.has(r.id));
-    const snds2=pickRandom(sndsPool2.length?sndsPool2:recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned));
-    if(snds2) usedSN.add(snds2.id);
+
     newMenu[d]={
       breakfast:{recipeId:bf?.id,isLeftover:false},
       lunch:{recipeId:lunchId,isLeftover:lunchLeft},
       dinner:{recipeId:dinnerId,isLeftover:dinnerLeft},
-      snack_dessert:{recipeId:snds2?.id,isLeftover:false},
+      snack_dessert:{recipeId:snackId,isLeftover:snackLeft},
     };
   }
 
@@ -678,7 +691,7 @@ function renderWeek(){
   if(bn){bn.style.opacity=weekOffset===1?'0.2':'1';bn.style.pointerEvents=weekOffset===1?'none':'auto';}
 
   const wm=allMenus[getWeekKey(weekOffset)]||{};
-  let totProt=0,mealCnt=0;const cuisines=new Set();let cookTime=0;
+  let totProt=0,mealCnt=0;const cuisines=new Set();
   const grid=document.getElementById('week-grid');
   grid.innerHTML='';
 
@@ -714,7 +727,7 @@ function renderWeek(){
             </div>
           </div>
           <button class="mc-swap" onclick="event.stopPropagation();openSwap(${d},'${mt}')">↻ Заменить</button>`;
-        if(!slot.isLeftover){totProt+=r.protein;mealCnt++;cuisines.add(r.cuisine);if(isCook)cookTime+=r.time;}
+        if(!slot.isLeftover){totProt+=r.protein;mealCnt++;cuisines.add(r.cuisine);}
       } else {
         cell.className='empty-cell'+(isCook?' cook-day-bg':'');
         cell.innerHTML='+';
@@ -729,9 +742,8 @@ function renderWeek(){
   const avgProt=mealCnt?Math.round(totProt/7):0;
   document.getElementById('stats-row').innerHTML=[
     {lbl:'Белок / день',val:avgProt,unit:'г',pct:Math.min(100,avgProt/1.5)},
-    {lbl:'Заполнено',val:mealCnt,unit:'/ 35',pct:mealCnt/35*100},
+    {lbl:'Заполнено',val:mealCnt,unit:'/ 28',pct:mealCnt/28*100},
     {lbl:'Кухни недели',val:cuisines.size,unit:'типа',pct:cuisines.size/5*100},
-    {lbl:'Время готовки',val:cookTime,unit:'мин',pct:Math.min(100,cookTime/360*100)},
   ].map(s=>`<div class="stat-card">
     <div class="stat-lbl">${s.lbl}</div>
     <div class="stat-val">${s.val}<span class="stat-unit">${s.unit}</span></div>

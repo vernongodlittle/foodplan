@@ -106,7 +106,9 @@ input,textarea{cursor:text}
 .add-btn:hover{background:#333}
 .outline-btn{background:transparent;color:var(--ink);border:1.5px solid var(--ink);padding:7px 14px;font-size:11px;font-weight:500;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
 .outline-btn:hover{background:var(--ink);color:var(--bg)}
-.filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.filter-bar{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.filter-group{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.filter-group-label{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--hint);min-width:44px;flex-shrink:0}
 .filter-pill{padding:4px 12px;font-size:11px;letter-spacing:.5px;border:1.5px solid var(--border-light);color:var(--muted);background:transparent;transition:all .12s}
 .filter-pill.active{border-color:var(--ink);color:var(--ink);font-weight:500}
 .recipes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
@@ -237,8 +239,8 @@ textarea.form-input{resize:vertical;min-height:70px}
         <input type="text" placeholder="Поиск..." id="recipe-search" oninput="renderRecipes()">
       </div>
       <label class="outline-btn" style="cursor:pointer">
-        📷 Из фото
-        <input type="file" accept="image/*" multiple style="display:none" onchange="bulkImport(event)">
+        📥 Импорт JSON
+        <input type="file" accept=".json" style="display:none" onchange="importJSON(event)">
       </label>
       <button class="add-btn" onclick="openAddModal()">+ Добавить</button>
     </div>
@@ -844,10 +846,21 @@ function toggleBan(id){const r=getRecipe(id);if(r){r.banned=!r.banned;saveRecipe
 // ── RECIPES PAGE ──────────────────────────────────────────────────────────
 const FILTER_LABELS={all:'Все',breakfast:'Завтраки',lunch:'Обеды',dinner:'Ужины',snack:'Перекусы',dessert:'Десерты',eu:'Европейская',fr:'Французская',it:'Итальянская',ru:'Русская',il:'Израильская',med:'Средиземноморская',th:'Тайская',us:'Американская',as:'Азиатская',mex:'Мексиканская',tr:'Турецкая',in:'Индийская',jp:'Японская',ko:'Корейская',uz:'Узбекская',ge:'Грузинская'};
 
+const MEAL_FILTER_KEYS=['all','breakfast','lunch','dinner','snack','dessert'];
+const CUISINE_FILTER_KEYS=['eu','fr','it','ru','il','med','th','us','as','mex','tr','in','jp','ko','uz','ge'];
+
 function renderFilters(){
-  document.getElementById('filter-bar').innerHTML=Object.keys(FILTER_LABELS).map(k=>
+  const mealPills=MEAL_FILTER_KEYS.map(k=>
     `<button class="filter-pill${activeFilters.has(k)?' active':''}" onclick="toggleFilter('${k}')">${FILTER_LABELS[k]}</button>`
   ).join('');
+  // Only show cuisine keys that have at least one recipe
+  const usedCuisines=new Set(recipes.map(r=>r.cuisine));
+  const cuisinePills=CUISINE_FILTER_KEYS.filter(k=>usedCuisines.has(k)).map(k=>
+    `<button class="filter-pill${activeFilters.has(k)?' active':''}" onclick="toggleFilter('${k}')">${CUISINE_LABELS[k]}</button>`
+  ).join('');
+  document.getElementById('filter-bar').innerHTML=`
+    <div class="filter-group"><span class="filter-group-label">Тип</span>${mealPills}</div>
+    <div class="filter-group"><span class="filter-group-label">Кухня</span>${cuisinePills}</div>`;
 }
 
 function toggleFilter(f){
@@ -1008,6 +1021,50 @@ async function handlePhotos(e){
 }
 
 // ── BULK IMPORT ───────────────────────────────────────────────────────────
+function importJSON(e){
+  const file=e.target.files[0];
+  if(!file) return;
+  e.target.value='';
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      const imported=Array.isArray(data)?data:(data.recipes||[]);
+      if(!imported.length){showToast('Файл пустой или неверный формат');return;}
+      let added=0, updated=0;
+      imported.forEach(r=>{
+        if(!r.name) return;
+        if(!r.meals&&r.meal) r.meals=[r.meal];
+        if(!r.meals) r.meals=['lunch'];
+        r.banned=r.banned||false;
+        r.timesUsed=r.timesUsed||0;
+        r.rating=r.rating||3;
+        const existingIdx=recipes.findIndex(x=>x.name.toLowerCase()===r.name.toLowerCase());
+        if(existingIdx>=0){
+          // Update existing — preserve id, rating, timesUsed, banned
+          const old=recipes[existingIdx];
+          recipes[existingIdx]={...r,id:old.id,rating:r.rating!==3?r.rating:old.rating,timesUsed:old.timesUsed,banned:old.banned};
+          updated++;
+        } else {
+          r.id=nextId++;
+          recipes.push(r);
+          added++;
+        }
+      });
+      if(added>0||updated>0){
+        await saveRecipes();
+        renderRecipes();
+        showToast('Добавлено '+added+', обновлено '+updated+' рецептов');
+      } else {
+        showToast('Нет новых рецептов для импорта');
+      }
+    }catch(err){
+      showToast('Ошибка: проверь формат JSON файла');
+    }
+  };
+  reader.readAsText(file);
+}
+
 async function bulkImport(e){
   const files=Array.from(e.target.files);if(!files.length) return;
   e.target.value='';

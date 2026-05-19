@@ -281,10 +281,21 @@ textarea.form-input{resize:vertical;min-height:70px}
           <label class="form-label">Кухня</label>
           <select class="form-input" id="r-cuisine">
             <option value="eu">Европейская</option>
-            <option value="as">Азиатская</option>
+            <option value="fr">Французская</option>
+            <option value="it">Итальянская</option>
+            <option value="ru">Русская</option>
+            <option value="il">Израильская</option>
             <option value="med">Средиземноморская</option>
+            <option value="th">Тайская</option>
+            <option value="us">Американская</option>
+            <option value="as">Азиатская</option>
             <option value="mex">Мексиканская</option>
             <option value="tr">Турецкая</option>
+            <option value="in">Индийская</option>
+            <option value="jp">Японская</option>
+            <option value="ko">Корейская</option>
+            <option value="uz">Узбекская</option>
+            <option value="ge">Грузинская</option>
           </select>
         </div>
         <div class="form-row">
@@ -388,7 +399,7 @@ async function dbSet(key,data){try{await fetch(`${SUPA_URL}/rest/v1/app_state`,{
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────
 const MEAL_LABELS={breakfast:'Завтрак',lunch:'Обед',dinner:'Ужин',snack_dessert:'Перекус / Десерт',snack:'Перекус',dessert:'Десерт'};
-const CUISINE_LABELS={eu:'Европейская',as:'Азиатская',med:'Средиземноморская',mex:'Мексиканская',tr:'Турецкая'};
+const CUISINE_LABELS={eu:'Европейская',fr:'Французская',it:'Итальянская',ru:'Русская',il:'Израильская',med:'Средиземноморская',th:'Тайская',us:'Американская',as:'Азиатская',mex:'Мексиканская',tr:'Турецкая',in:'Индийская',jp:'Японская',ko:'Корейская',uz:'Узбекская',ge:'Грузинская'};
 const DAYS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 const DAYS_FULL=['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
 const MONTHS=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
@@ -398,7 +409,7 @@ const MEAL_TYPES=['breakfast','lunch','dinner','snack_dessert'];
 // ── DEFAULT RECIPES ───────────────────────────────────────────────────────
 const DEFAULT_RECIPES=[
   // ЗАВТРАКИ
-  {id:1,name:'Шакшука с фетой',meals:['breakfast'],cuisine:'med',protein:28,time:20,tags:['prot'],ingredients:'яйца 4шт, томаты конс. 400г, фета 80г, перец 1шт, лук 1шт, чеснок 2зуб',steps:'Шаг 1. Обжарь лук и перец 5 мин.\nШаг 2. Добавь томаты, туши 5 мин.\nШаг 3. Разбей яйца, посыпь фетой, готовь 5 мин.',equipment:['stove'],rating:5,banned:false,timesUsed:0},
+  {id:1,name:'Шакшука с фетой',meals:['breakfast'],cuisine:'il',protein:28,time:20,tags:['prot'],ingredients:'яйца 4шт, томаты конс. 400г, фета 80г, перец 1шт, лук 1шт, чеснок 2зуб',steps:'Шаг 1. Обжарь лук и перец 5 мин.\nШаг 2. Добавь томаты, туши 5 мин.\nШаг 3. Разбей яйца, посыпь фетой, готовь 5 мин.',equipment:['stove'],rating:5,banned:false,timesUsed:0},
   {id:2,name:'Яичница с авокадо и творогом',meals:['breakfast'],cuisine:'eu',protein:32,time:10,tags:['prot'],ingredients:'яйца 3шт, авокадо 1шт, творог 5% 150г, зелень',steps:'Шаг 1. Обжарь яйца на масле.\nШаг 2. Подай с авокадо и творогом.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
   {id:3,name:'Греческий йогурт с орехами',meals:['breakfast'],cuisine:'eu',protein:20,time:5,tags:['light'],ingredients:'греческий йогурт 200г, орехи 30г, ягоды 100г, мёд',steps:'Шаг 1. Смешай всё в миске.',equipment:[],rating:4,banned:false,timesUsed:0},
   {id:4,name:'Омлет со шпинатом и козьим сыром',meals:['breakfast'],cuisine:'eu',protein:30,time:15,tags:['prot'],ingredients:'яйца 4шт, шпинат 100г, козий сыр 50г, молоко 50мл',steps:'Шаг 1. Взбей яйца с молоком.\nШаг 2. Обжарь шпинат.\nШаг 3. Вылей яйца, готовь под крышкой, добавь сыр.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
@@ -831,7 +842,7 @@ function rateDetail(id,s){const r=getRecipe(id);if(r){r.rating=s;saveRecipes();o
 function toggleBan(id){const r=getRecipe(id);if(r){r.banned=!r.banned;saveRecipes();openDetail(id);renderRecipes();showToast(r.banned?'Исключён':'Возвращён в меню');}}
 
 // ── RECIPES PAGE ──────────────────────────────────────────────────────────
-const FILTER_LABELS={all:'Все',breakfast:'Завтраки',lunch:'Обеды',dinner:'Ужины',snack:'Перекусы',dessert:'Десерты',eu:'Европейская',as:'Азиатская',med:'Средиземноморская',mex:'Мексиканская',tr:'Турецкая'};
+const FILTER_LABELS={all:'Все',breakfast:'Завтраки',lunch:'Обеды',dinner:'Ужины',snack:'Перекусы',dessert:'Десерты',eu:'Европейская',fr:'Французская',it:'Итальянская',ru:'Русская',il:'Израильская',med:'Средиземноморская',th:'Тайская',us:'Американская',as:'Азиатская',mex:'Мексиканская',tr:'Турецкая',in:'Индийская',jp:'Японская',ko:'Корейская',uz:'Узбекская',ge:'Грузинская'};
 
 function renderFilters(){
   document.getElementById('filter-bar').innerHTML=Object.keys(FILTER_LABELS).map(k=>

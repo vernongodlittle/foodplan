@@ -208,9 +208,9 @@ textarea.form-input{resize:vertical;min-height:70px}
         <div class="week-head">
           <span class="week-title" id="week-title"></span>
           <div class="week-nav">
-            <button onclick="changeWeek(-1)">‹</button>
+            <button onclick="changeWeek(-1)" id="btn-prev">‹</button>
             <span id="week-label">Эта неделя</span>
-            <button onclick="changeWeek(1)">›</button>
+            <button onclick="changeWeek(1)" id="btn-next">›</button>
           </div>
         </div>
         <div class="col-headers">
@@ -470,7 +470,7 @@ async function loadCloud(){
   const [rData,mData]=await Promise.all([dbGet('recipes'),dbGet('menu')]);
   if(rData?.recipes?.length){recipes=rData.recipes;nextId=rData.nextId||recipes.reduce((m,r)=>Math.max(m,r.id),0)+1;}
   else{recipes=DEFAULT_RECIPES.map(r=>({...r}));await dbSet('recipes',{recipes,nextId});}
-  if(mData?.allMenus) allMenus=mData.allMenus;
+  if(mData?.allMenus) allMenus=migrateMenu(mData.allMenus);
   if(mData?.shoppingChecked) shoppingChecked=mData.shoppingChecked;
   setSyncStatus('ok');
 }
@@ -504,7 +504,7 @@ function categorise(items){
 
 function buildShoppingList(){
   const all={};
-  const wm=allMenus[weekOffset]||{};
+  const wm=allMenus[getWeekKey(weekOffset)]||{};
   Object.values(wm).forEach(day=>{
     MEAL_TYPES.forEach(mt=>{
       const slot=day[mt];
@@ -610,7 +610,11 @@ async function generateMenu(){
     };
   }
 
-  allMenus={...allMenus,[weekOffset]:newMenu};
+  // Only keep current and next week
+  const cleanMenus={};
+  [0,1].forEach(o=>{const k=getWeekKey(o);if(allMenus[k])cleanMenus[k]=allMenus[k];});
+  cleanMenus[getWeekKey(weekOffset)]=newMenu;
+  allMenus=cleanMenus;
   await saveMenu();
   renderWeek();buildShoppingList();
   btn.disabled=false;btn.textContent='✦ Сгенерировать меню';
@@ -627,18 +631,23 @@ function getWeekDates(){
 }
 
 function changeWeek(dir){
-  weekOffset+=dir;
+  const newOffset=weekOffset+dir;
+  if(newOffset<0||newOffset>1) return; // only current and next week
+  weekOffset=newOffset;
   renderWeek();buildShoppingList();
-  if(!allMenus[weekOffset]) generateMenu();
+  if(!allMenus[getWeekKey(weekOffset)]) generateMenu();
 }
 
 function renderWeek(){
   const dates=getWeekDates();
   const y=dates[0].getFullYear();
   document.getElementById('week-title').textContent=fmtDate(dates[0])+'–'+fmtDate(dates[6])+' '+y;
-  document.getElementById('week-label').textContent=weekOffset===0?'Эта неделя':weekOffset<0?Math.abs(weekOffset)+' нед. назад':'+'+weekOffset+' нед.';
+  document.getElementById('week-label').textContent=weekOffset===0?'Эта неделя':'Следующая неделя';
+  const bp=document.getElementById('btn-prev');const bn=document.getElementById('btn-next');
+  if(bp){bp.style.opacity=weekOffset===0?'0.2':'1';bp.style.pointerEvents=weekOffset===0?'none':'auto';}
+  if(bn){bn.style.opacity=weekOffset===1?'0.2':'1';bn.style.pointerEvents=weekOffset===1?'none':'auto';}
 
-  const wm=allMenus[weekOffset]||{};
+  const wm=allMenus[getWeekKey(weekOffset)]||{};
   let totProt=0,mealCnt=0;const cuisines=new Set();let cookTime=0;
   const grid=document.getElementById('week-grid');
   grid.innerHTML='';
@@ -723,14 +732,14 @@ function openSwap(dayIdx,mealType){
 async function applySwap(recipeId){
   if(!currentSwapSlot) return;
   const {dayIdx,mealType}=currentSwapSlot;
-  const wm={...allMenus[weekOffset]||{}};
+  const wm={...allMenus[getWeekKey(weekOffset)]||{}};
 
   // Update the swapped slot
   wm[dayIdx]={...(wm[dayIdx]||{}),[mealType]:{recipeId,isLeftover:false}};
 
   // If this is a cook day — also update leftover days that had the OLD recipe
   if(COOK_DAYS.includes(dayIdx)){
-    const oldRecipeId=(allMenus[weekOffset]||{})[dayIdx]?.[mealType]?.recipeId;
+    const oldRecipeId=(allMenus[getWeekKey(weekOffset)]||{})[dayIdx]?.[mealType]?.recipeId;
     for(let d=0;d<7;d++){
       if(COOK_DAYS.includes(d)) continue;
       const prevCook=COOK_DAYS.filter(cd=>cd<d).slice(-1)[0];
@@ -740,7 +749,7 @@ async function applySwap(recipeId){
     }
   }
 
-  allMenus={...allMenus,[weekOffset]:wm};
+  allMenus={...allMenus,[getWeekKey(weekOffset)]:wm};
   closeModal('swap-modal');
   await saveMenu();renderWeek();buildShoppingList();
   showToast('Блюдо заменено!');
@@ -1001,28 +1010,62 @@ function openModal(id){document.getElementById(id).classList.remove('hidden');}
 function closeModal(id){document.getElementById(id).classList.add('hidden');}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
 
+// ── WEEK OFFSET ───────────────────────────────────────────────────────────
+// Use ISO week number as key — only current (0) and next (1) weeks
+function getWeekKey(offset){
+  const d=new Date();
+  d.setDate(d.getDate()+offset*7-((d.getDay()+6)%7)); // Monday
+  const y=d.getFullYear();
+  const start=new Date(y,0,1);
+  const wk=Math.ceil(((d-start)/86400000+start.getDay()+1)/7);
+  return y+'_'+wk;
+}
+
+// Migrate old menu data: convert snack+dessert slots to snack_dessert
+function migrateMenu(rawMenus){
+  if(!rawMenus) return {};
+  const migrated={};
+  Object.entries(rawMenus).forEach(([weekKey,days])=>{
+    migrated[weekKey]={};
+    Object.entries(days).forEach(([d,slots])=>{
+      const newSlots={...slots};
+      // If old format has separate snack/dessert, merge into snack_dessert
+      if((newSlots.snack||newSlots.dessert)&&!newSlots.snack_dessert){
+        newSlots.snack_dessert=newSlots.snack||newSlots.dessert||{recipeId:null,isLeftover:false};
+        delete newSlots.snack;delete newSlots.dessert;
+      }
+      migrated[weekKey][d]=newSlots;
+    });
+  });
+  return migrated;
+}
+
 // ── INIT ──────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded',async function(){
   // Fast load from localStorage
   try{
-    const raw=localStorage.getItem('nedelia_v3');
-    if(raw){const d=JSON.parse(raw);recipes=d.recipes||[];allMenus=d.allMenus||{};shoppingChecked=d.shoppingChecked||{};nextId=d.nextId||26;}
+    const raw=localStorage.getItem('nedelia_v4');
+    if(raw){const d=JSON.parse(raw);recipes=d.recipes||[];allMenus=migrateMenu(d.allMenus)||{};shoppingChecked=d.shoppingChecked||{};nextId=d.nextId||26;}
   }catch(e){}
   if(!recipes.length) recipes=DEFAULT_RECIPES.map(r=>({...r}));
+
+  // weekOffset stays 0 (current week), only 0 and 1 allowed
+  weekOffset=0;
   renderWeek();renderFilters();
-  if(!allMenus[weekOffset]) generateMenu();
+  const wk=getWeekKey(0);
+  if(!allMenus[wk]) generateMenu();
   else buildShoppingList();
 
   // Then load from Supabase
   await loadCloud();
-  localStorage.setItem('nedelia_v3',JSON.stringify({recipes,allMenus,shoppingChecked,nextId}));
+  localStorage.setItem('nedelia_v4',JSON.stringify({recipes,allMenus,shoppingChecked,nextId}));
   renderWeek();renderFilters();
-  if(!allMenus[weekOffset]) generateMenu();
+  if(!allMenus[getWeekKey(weekOffset)]) generateMenu();
   else buildShoppingList();
   showToast('Загружено '+recipes.length+' рецептов');
 
   // Autosave locally every 5s
-  setInterval(()=>{try{localStorage.setItem('nedelia_v3',JSON.stringify({recipes,allMenus,shoppingChecked,nextId}));}catch(e){}},5000);
+  setInterval(()=>{try{localStorage.setItem('nedelia_v4',JSON.stringify({recipes,allMenus,shoppingChecked,nextId}));}catch(e){}},5000);
 });
 </script>
 </body>

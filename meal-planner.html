@@ -54,9 +54,9 @@ input,textarea{cursor:text}
 .week-nav span{font-size:11px;color:var(--muted);min-width:110px;text-align:center;letter-spacing:.5px}
 .week-layout{display:grid;grid-template-columns:1fr 230px;gap:20px}
 
-.col-headers{display:grid;grid-template-columns:52px repeat(4,1fr);gap:8px;margin-bottom:6px}
+.col-headers{display:grid;grid-template-columns:52px repeat(5,1fr);gap:8px;margin-bottom:6px}
 .col-hdr{font-size:9px;letter-spacing:1.2px;text-transform:uppercase;color:var(--hint);text-align:center;padding-bottom:4px;border-bottom:1px solid var(--border)}
-.day-row{display:grid;grid-template-columns:52px repeat(4,1fr);gap:8px;margin-bottom:8px}
+.day-row{display:grid;grid-template-columns:52px repeat(5,1fr);gap:8px;margin-bottom:8px}
 
 .day-lbl{display:flex;flex-direction:column;align-items:center;justify-content:center}
 .day-name{font-size:9px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
@@ -219,8 +219,9 @@ textarea.form-input{resize:vertical;min-height:70px}
           <div></div>
           <div class="col-hdr">Завтрак</div>
           <div class="col-hdr">Обед</div>
-          <div class="col-hdr">Ужин</div>
-          <div class="col-hdr">Перекус / Десерт</div>
+          <div class="col-hdr">Ужин 1</div>
+          <div class="col-hdr">Ужин 2</div>
+          <div class="col-hdr">Десерт</div>
         </div>
         <div id="week-grid"></div>
       </div>
@@ -272,8 +273,9 @@ textarea.form-input{resize:vertical;min-height:70px}
         <label class="form-label">Тип приёма пищи (можно несколько)</label>
         <div class="form-checks" id="meal-checks">
           <label class="check-lbl"><input type="checkbox" id="mc-breakfast" value="breakfast"> Завтрак</label>
-          <label class="check-lbl"><input type="checkbox" id="mc-lunch" value="lunch" checked> Обед</label>
-          <label class="check-lbl"><input type="checkbox" id="mc-dinner" value="dinner"> Ужин</label>
+          <label class="check-lbl"><input type="checkbox" id="mc-main" value="main" checked> Основное блюдо</label>
+          <label class="check-lbl"><input type="checkbox" id="mc-soup" value="soup"> Суп</label>
+          <label class="check-lbl"><input type="checkbox" id="mc-salad" value="salad"> Салат</label>
           <label class="check-lbl"><input type="checkbox" id="mc-snack" value="snack"> Перекус</label>
           <label class="check-lbl"><input type="checkbox" id="mc-dessert" value="dessert"> Десерт</label>
         </div>
@@ -400,13 +402,13 @@ async function dbGet(key){try{const r=await fetch(`${SUPA_URL}/rest/v1/app_state
 async function dbSet(key,data){try{await fetch(`${SUPA_URL}/rest/v1/app_state`,{method:'POST',headers:SH,body:JSON.stringify({key,data,updated_at:new Date().toISOString()})});}catch(e){console.warn(e);}}
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────
-const MEAL_LABELS={breakfast:'Завтрак',lunch:'Обед',dinner:'Ужин',snack_dessert:'Перекус / Десерт',snack:'Перекус',dessert:'Десерт'};
+const MEAL_LABELS={breakfast:'Завтрак',main:'Основное блюдо',soup:'Суп',salad:'Салат',snack:'Перекус',dessert:'Десерт',dinner:'Ужин',dinner2:'Ужин 2',snack_dessert:'Десерт'};
 const CUISINE_LABELS={eu:'Европейская',fr:'Французская',it:'Итальянская',ru:'Русская',il:'Израильская',med:'Средиземноморская',th:'Тайская',us:'Американская',as:'Азиатская',mex:'Мексиканская',tr:'Турецкая',in:'Индийская',jp:'Японская',ko:'Корейская',uz:'Узбекская',ge:'Грузинская'};
 const DAYS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
 const DAYS_FULL=['Понедельник','Вторник','Среда','Четверг','Пятница','Суббота','Воскресенье'];
 const MONTHS=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
 const COOK_DAYS=[0,2,4];
-const MEAL_TYPES=['breakfast','lunch','dinner','snack_dessert'];
+const MEAL_TYPES=['breakfast','lunch','dinner','dinner2','snack_dessert'];
 
 // ── DEFAULT RECIPES ───────────────────────────────────────────────────────
 const DEFAULT_RECIPES=[
@@ -415,21 +417,21 @@ const DEFAULT_RECIPES=[
   {id:2,name:'Яичница с авокадо и творогом',meals:['breakfast'],cuisine:'eu',protein:32,time:10,tags:['prot'],ingredients:'яйца 3шт, авокадо 1шт, творог 5% 150г, зелень',steps:'Шаг 1. Обжарь яйца на масле.\nШаг 2. Подай с авокадо и творогом.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
   {id:3,name:'Греческий йогурт с орехами',meals:['breakfast'],cuisine:'eu',protein:20,time:5,tags:['light'],ingredients:'греческий йогурт 200г, орехи 30г, ягоды 100г, мёд',steps:'Шаг 1. Смешай всё в миске.',equipment:[],rating:4,banned:false,timesUsed:0},
   {id:4,name:'Омлет со шпинатом и козьим сыром',meals:['breakfast'],cuisine:'eu',protein:30,time:15,tags:['prot'],ingredients:'яйца 4шт, шпинат 100г, козий сыр 50г, молоко 50мл',steps:'Шаг 1. Взбей яйца с молоком.\nШаг 2. Обжарь шпинат.\nШаг 3. Вылей яйца, готовь под крышкой, добавь сыр.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
-  {id:5,name:'Творог с гранолой и йогуртом',meals:['breakfast','dinner'],cuisine:'eu',protein:25,time:5,tags:['light'],ingredients:'творог 5% 200г, гранола 40г, греческий йогурт 100г, ягоды',steps:'Шаг 1. Смешай творог и йогурт, посыпь гранолой.',equipment:[],rating:5,banned:false,timesUsed:0},
+  {id:5,name:'Творог с гранолой и йогуртом',meals:['breakfast','snack'],cuisine:'eu',protein:25,time:5,tags:['light'],ingredients:'творог 5% 200г, гранола 40г, греческий йогурт 100г, ягоды',steps:'Шаг 1. Смешай творог и йогурт, посыпь гранолой.',equipment:[],rating:5,banned:false,timesUsed:0},
   {id:6,name:'Турецкий менемен',meals:['breakfast'],cuisine:'tr',protein:26,time:20,tags:['prot'],ingredients:'яйца 3шт, томаты 2шт, перец 1шт, лук 1шт, специи',steps:'Шаг 1. Обжарь лук и перец.\nШаг 2. Добавь томаты.\nШаг 3. Вбей яйца, готовь 5 мин помешивая.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
   // ОБЕДЫ
-  {id:7,name:'Куриное филе в аэрогриле с овощами',meals:['lunch'],cuisine:'eu',protein:52,time:35,tags:['prot'],ingredients:'куриное филе 400г, болгарский перец 2шт, цукини 1шт, брокколи 200г, специи',steps:'Шаг 1. Маринуй курицу 10 мин.\nШаг 2. Нарежь овощи.\nШаг 3. Аэрогриль 200°C, 20 мин.',equipment:['airfryer'],rating:5,banned:false,timesUsed:0},
-  {id:8,name:'Говяжий боул с булгуром',meals:['lunch'],cuisine:'med',protein:45,time:40,tags:['prot'],ingredients:'говяжий фарш 300г, булгур 100г, помидоры черри, огурец, петрушка, специи',steps:'Шаг 1. Отвари булгур 15 мин.\nШаг 2. Обжарь фарш со специями.\nШаг 3. Смешай с овощами.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
-  {id:9,name:'Куриный суп с нутом',meals:['lunch'],cuisine:'med',protein:40,time:45,tags:['prot'],ingredients:'куриное филе 300г, нут конс. 1банка, морковь 2шт, сельдерей, лук, куркума',steps:'Шаг 1. Свари курицу 20 мин.\nШаг 2. Вари овощи 10 мин.\nШаг 3. Добавь нут и курицу.',equipment:['stove'],rating:5,banned:false,timesUsed:0},
-  {id:10,name:'Запечённая курица с бататом',meals:['lunch'],cuisine:'eu',protein:48,time:50,tags:['prot'],ingredients:'куриные бёдра 4шт, батат 2шт, оливковое масло, розмарин, специи',steps:'Шаг 1. Разогрей духовку 200°C.\nШаг 2. Нарежь батат.\nШаг 3. Запекай всё 40 мин.',equipment:['oven'],rating:5,banned:false,timesUsed:0},
-  {id:11,name:'Курица терияки с рисом',meals:['lunch'],cuisine:'as',protein:50,time:30,tags:['prot'],ingredients:'куриное филе 350г, рис 100г, брокколи 200г, соевый соус, мёд, имбирь',steps:'Шаг 1. Маринуй курицу 15 мин.\nШаг 2. Отвари рис.\nШаг 3. Обжарь курицу с брокколи.',equipment:['stove'],rating:5,banned:false,timesUsed:0},
-  {id:12,name:'Тако с курицей и авокадо',meals:['lunch'],cuisine:'mex',protein:42,time:25,tags:['prot'],ingredients:'куриное филе 300г, тортилья 4шт, авокадо 1шт, лайм, кориандр, специи',steps:'Шаг 1. Запеки курицу.\nШаг 2. Разбери на волокна.\nШаг 3. Собери тако.',equipment:['oven'],rating:5,banned:false,timesUsed:0},
-  {id:13,name:'Паста с курицей и томатами',meals:['lunch'],cuisine:'med',protein:40,time:25,tags:['prot'],ingredients:'куриное филе 250г, паста 150г, томаты черри 200г, чеснок, базилик',steps:'Шаг 1. Отвари пасту.\nШаг 2. Обжарь курицу.\nШаг 3. Добавь томаты, смешай.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
-  {id:14,name:'Говяжий стейк с гречкой',meals:['lunch'],cuisine:'eu',protein:55,time:30,tags:['prot'],ingredients:'говяжий стейк 300г, гречка 80г, помидор, огурец',steps:'Шаг 1. Отвари гречку.\nШаг 2. Обжарь стейк 4 мин с каждой стороны.\nШаг 3. Дай отдохнуть 5 мин.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
+  {id:7,name:'Куриное филе в аэрогриле с овощами',meals:['main'],cuisine:'eu',protein:52,time:35,tags:['prot'],ingredients:'куриное филе 400г, болгарский перец 2шт, цукини 1шт, брокколи 200г, специи',steps:'Шаг 1. Маринуй курицу 10 мин.\nШаг 2. Нарежь овощи.\nШаг 3. Аэрогриль 200°C, 20 мин.',equipment:['airfryer'],rating:5,banned:false,timesUsed:0},
+  {id:8,name:'Говяжий боул с булгуром',meals:['main'],cuisine:'med',protein:45,time:40,tags:['prot'],ingredients:'говяжий фарш 300г, булгур 100г, помидоры черри, огурец, петрушка, специи',steps:'Шаг 1. Отвари булгур 15 мин.\nШаг 2. Обжарь фарш со специями.\nШаг 3. Смешай с овощами.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
+  {id:9,name:'Куриный суп с нутом',meals:['main'],cuisine:'med',protein:40,time:45,tags:['prot'],ingredients:'куриное филе 300г, нут конс. 1банка, морковь 2шт, сельдерей, лук, куркума',steps:'Шаг 1. Свари курицу 20 мин.\nШаг 2. Вари овощи 10 мин.\nШаг 3. Добавь нут и курицу.',equipment:['stove'],rating:5,banned:false,timesUsed:0},
+  {id:10,name:'Запечённая курица с бататом',meals:['main'],cuisine:'eu',protein:48,time:50,tags:['prot'],ingredients:'куриные бёдра 4шт, батат 2шт, оливковое масло, розмарин, специи',steps:'Шаг 1. Разогрей духовку 200°C.\nШаг 2. Нарежь батат.\nШаг 3. Запекай всё 40 мин.',equipment:['oven'],rating:5,banned:false,timesUsed:0},
+  {id:11,name:'Курица терияки с рисом',meals:['main'],cuisine:'as',protein:50,time:30,tags:['prot'],ingredients:'куриное филе 350г, рис 100г, брокколи 200г, соевый соус, мёд, имбирь',steps:'Шаг 1. Маринуй курицу 15 мин.\nШаг 2. Отвари рис.\nШаг 3. Обжарь курицу с брокколи.',equipment:['stove'],rating:5,banned:false,timesUsed:0},
+  {id:12,name:'Тако с курицей и авокадо',meals:['main'],cuisine:'mex',protein:42,time:25,tags:['prot'],ingredients:'куриное филе 300г, тортилья 4шт, авокадо 1шт, лайм, кориандр, специи',steps:'Шаг 1. Запеки курицу.\nШаг 2. Разбери на волокна.\nШаг 3. Собери тако.',equipment:['oven'],rating:5,banned:false,timesUsed:0},
+  {id:13,name:'Паста с курицей и томатами',meals:['main'],cuisine:'med',protein:40,time:25,tags:['prot'],ingredients:'куриное филе 250г, паста 150г, томаты черри 200г, чеснок, базилик',steps:'Шаг 1. Отвари пасту.\nШаг 2. Обжарь курицу.\nШаг 3. Добавь томаты, смешай.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
+  {id:14,name:'Говяжий стейк с гречкой',meals:['main'],cuisine:'eu',protein:55,time:30,tags:['prot'],ingredients:'говяжий стейк 300г, гречка 80г, помидор, огурец',steps:'Шаг 1. Отвари гречку.\nШаг 2. Обжарь стейк 4 мин с каждой стороны.\nШаг 3. Дай отдохнуть 5 мин.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
   // УЖИНЫ
-  {id:15,name:'Творог с бананом и арахисовой пастой',meals:['dinner'],cuisine:'eu',protein:28,time:5,tags:['light'],ingredients:'творог 5% 250г, банан 1шт, арахисовая паста',steps:'Шаг 1. Смешай всё.',equipment:[],rating:4,banned:false,timesUsed:0},
-  {id:16,name:'Греческий йогурт с миндалём',meals:['dinner'],cuisine:'eu',protein:20,time:5,tags:['light'],ingredients:'греческий йогурт 10% 200г, миндаль 30г, ягоды 80г',steps:'Шаг 1. Собери в миске.',equipment:[],rating:4,banned:false,timesUsed:0},
-  {id:17,name:'Куриный бульон с яйцом',meals:['dinner'],cuisine:'eu',protein:25,time:15,tags:['light'],ingredients:'куриный бульон 300мл, яйца 2шт, зелень',steps:'Шаг 1. Подогрей бульон.\nШаг 2. Пашируй яйца 3 мин.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
+  {id:15,name:'Творог с бананом и арахисовой пастой',meals:['snack'],cuisine:'eu',protein:28,time:5,tags:['light'],ingredients:'творог 5% 250г, банан 1шт, арахисовая паста',steps:'Шаг 1. Смешай всё.',equipment:[],rating:4,banned:false,timesUsed:0},
+  {id:16,name:'Греческий йогурт с миндалём',meals:['snack'],cuisine:'eu',protein:20,time:5,tags:['light'],ingredients:'греческий йогурт 10% 200г, миндаль 30г, ягоды 80г',steps:'Шаг 1. Собери в миске.',equipment:[],rating:4,banned:false,timesUsed:0},
+  {id:17,name:'Куриный бульон с яйцом',meals:['soup'],cuisine:'eu',protein:25,time:15,tags:['light'],ingredients:'куриный бульон 300мл, яйца 2шт, зелень',steps:'Шаг 1. Подогрей бульон.\nШаг 2. Пашируй яйца 3 мин.',equipment:['stove'],rating:4,banned:false,timesUsed:0},
   // ПЕРЕКУСЫ
   {id:18,name:'Протеиновый коктейль',meals:['snack'],cuisine:'eu',protein:25,time:3,tags:['prot'],ingredients:'протеин 1 порция, молоко 250мл',steps:'Шаг 1. Взбей в шейкере.',equipment:[],rating:4,banned:false,timesUsed:0},
   {id:19,name:'Творог с ягодами',meals:['snack'],cuisine:'eu',protein:18,time:3,tags:['light'],ingredients:'творог 5% 150г, ягоды 80г, мёд',steps:'Шаг 1. Смешай.',equipment:[],rating:4,banned:false,timesUsed:0},
@@ -477,6 +479,8 @@ function migrateMenu(rawMenus){
         s.snack_dessert=s.snack||s.dessert||{recipeId:null,isLeftover:false};
         delete s.snack; delete s.dessert;
       }
+      // Add dinner2 slot if missing
+      if(!s.dinner2) s.dinner2={recipeId:null,isLeftover:false};
       migrated[weekKey][d]=s;
     });
   });
@@ -592,67 +596,89 @@ async function generateMenu(){
   const btn=document.getElementById('gen-btn');
   btn.disabled=true;btn.textContent='...';
 
-  const avail=meal=>recipes.filter(r=>getMeals(r).includes(meal)&&!r.banned)
+  // avail(type) — recipes of given meal type, sorted by rating
+  const avail=t=>recipes.filter(r=>getMeals(r).includes(t)&&!r.banned)
     .sort((a,b)=>b.rating-a.rating-(a.timesUsed-b.timesUsed)*0.5);
 
-  const usedMain=new Set();
-  const usedBF=new Set(),usedSN=new Set();
-  const cookMeals={};
-  const leftGiven={};
-  COOK_DAYS.forEach(cd=>{leftGiven[cd]={lunch:false,dinner:false,snack:false};});
+  const usedMain=new Set(); // tracks all used recipe ids to avoid >2x repeat
+  const usedBF=new Set(),usedDS=new Set();
+  const cookMeals={}; // per cook day: what was cooked
+  const leftGiven={}; // per cook day: which slots already given as leftover
+  COOK_DAYS.forEach(cd=>{leftGiven[cd]={lunch:false,dinner:false,dinner2:false,dessert:false};});
   const newMenu={};
 
-  // Cook days — unique main dishes
+  // ── Cook days ──────────────────────────────────────────────────────────
   for(const d of COOK_DAYS){
-    const avLu=avail('lunch').filter(r=>!usedMain.has(r.id));
-    const lu=pickRandom(avLu.length?avLu:avail('lunch'));
-    const avDi=avail('dinner').filter(r=>!usedMain.has(r.id)&&(!lu||r.id!==lu.id));
-    const di=pickRandom(avDi.length?avDi:avail('dinner').filter(r=>!lu||r.id!==lu.id));
-    const bf=pickRandom(avail('breakfast').filter(r=>!usedBF.has(r.id)));
-    const sndsPool=recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned&&!usedSN.has(r.id));
-    const snds=pickRandom(sndsPool.length?sndsPool:recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned));
-    if(lu){usedMain.add(lu.id);lu.timesUsed++;}
-    if(di){usedMain.add(di.id);di.timesUsed++;}
+    // Breakfast
+    const bf=pickRandom(avail('breakfast').filter(r=>!usedBF.has(r.id)))||pickRandom(avail('breakfast'));
+
+    // Lunch: main dish
+    const avMain=avail('main').filter(r=>!usedMain.has(r.id));
+    const lu=pickRandom(avMain.length?avMain:avail('main'));
+
+    // Dinner slot 1: soup or salad (pick one type randomly for variety)
+    const soupOrSalad=['soup','salad'];
+    const d1type=soupOrSalad[Math.floor(Math.random()*2)];
+    const avD1=avail(d1type).filter(r=>!usedMain.has(r.id));
+    const di1=pickRandom(avD1.length?avD1:avail(d1type));
+
+    // Dinner slot 2: must be DIFFERENT category from slot 1
+    // soup→snack or salad, salad→snack or soup
+    const d2types=d1type==='soup'?['snack','salad']:['snack','soup'];
+    let di2=null;
+    for(const t of d2types){
+      const av=avail(t).filter(r=>!usedMain.has(r.id)&&(!di1||r.id!==di1.id));
+      const r=pickRandom(av.length?av:avail(t).filter(r=>!di1||r.id!==di1.id));
+      if(r){di2=r;break;}
+    }
+
+    // Dessert
+    const avDs=avail('dessert').filter(r=>!usedDS.has(r.id));
+    const ds=pickRandom(avDs.length?avDs:avail('dessert'));
+
     if(bf) usedBF.add(bf.id);
-    if(snds) usedSN.add(snds.id);
-    // Store snackId so non-cook day can use as leftover
-    cookMeals[d]={lunchId:lu?.id,dinnerId:di?.id,snackId:snds?.id};
+    if(lu){usedMain.add(lu.id);lu.timesUsed++;}
+    if(di1){usedMain.add(di1.id);di1.timesUsed++;}
+    if(di2){usedMain.add(di2.id);di2.timesUsed++;}
+    if(ds) usedDS.add(ds.id);
+
+    cookMeals[d]={lunchId:lu?.id,dinnerId:di1?.id,dinner2Id:di2?.id,dessertId:ds?.id};
     newMenu[d]={
       breakfast:{recipeId:bf?.id,isLeftover:false},
       lunch:{recipeId:lu?.id,isLeftover:false},
-      dinner:{recipeId:di?.id,isLeftover:false},
-      snack_dessert:{recipeId:snds?.id,isLeftover:false},
+      dinner:{recipeId:di1?.id,isLeftover:false},
+      dinner2:{recipeId:di2?.id,isLeftover:false},
+      snack_dessert:{recipeId:ds?.id,isLeftover:false},
     };
   }
 
-  // Non-cook days — leftovers for lunch/dinner/snack, fresh BF
+  // ── Non-cook days ─────────────────────────────────────────────────────
   for(let d=0;d<7;d++){
     if(COOK_DAYS.includes(d)) continue;
     const prevCook=COOK_DAYS.filter(cd=>cd<d).slice(-1)[0];
-    let lunchId=null,dinnerId=null,snackId=null;
-    let lunchLeft=false,dinnerLeft=false,snackLeft=false;
+    let lunchId=null,dinnerId=null,dinner2Id=null,dessertId=null;
+    let lunchLeft=false,dinnerLeft=false,dinner2Left=false,dessertLeft=false;
 
-    if(prevCook!==undefined&&!leftGiven[prevCook].lunch){
-      lunchId=cookMeals[prevCook]?.lunchId;
-      if(lunchId){leftGiven[prevCook].lunch=true;lunchLeft=true;}
-    }
-    if(prevCook!==undefined&&!leftGiven[prevCook].dinner){
-      dinnerId=cookMeals[prevCook]?.dinnerId;
-      if(dinnerId){leftGiven[prevCook].dinner=true;dinnerLeft=true;}
-    }
-    if(prevCook!==undefined&&!leftGiven[prevCook].snack){
-      snackId=cookMeals[prevCook]?.snackId;
-      if(snackId){leftGiven[prevCook].snack=true;snackLeft=true;}
+    if(prevCook!==undefined){
+      if(!leftGiven[prevCook].lunch&&cookMeals[prevCook]?.lunchId){
+        lunchId=cookMeals[prevCook].lunchId;leftGiven[prevCook].lunch=true;lunchLeft=true;
+      }
+      if(!leftGiven[prevCook].dinner&&cookMeals[prevCook]?.dinnerId){
+        dinnerId=cookMeals[prevCook].dinnerId;leftGiven[prevCook].dinner=true;dinnerLeft=true;
+      }
+      if(!leftGiven[prevCook].dinner2&&cookMeals[prevCook]?.dinner2Id){
+        dinner2Id=cookMeals[prevCook].dinner2Id;leftGiven[prevCook].dinner2=true;dinner2Left=true;
+      }
+      if(!leftGiven[prevCook].dessert&&cookMeals[prevCook]?.dessertId){
+        dessertId=cookMeals[prevCook].dessertId;leftGiven[prevCook].dessert=true;dessertLeft=true;
+      }
     }
 
-    // If no leftover available (second non-cook day), pick fresh
-    if(!lunchId){const r=pickRandom(avail('lunch').filter(r=>!usedMain.has(r.id)));if(r){lunchId=r.id;usedMain.add(r.id);}}
-    if(!dinnerId){const r=pickRandom(avail('dinner').filter(r=>!usedMain.has(r.id)));if(r){dinnerId=r.id;usedMain.add(r.id);}}
-    if(!snackId){
-      const p=recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned&&!usedSN.has(r.id));
-      const r=pickRandom(p.length?p:recipes.filter(r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned));
-      if(r){snackId=r.id;usedSN.add(r.id);}
-    }
+    // If second non-cook day after same cook day — pick fresh
+    if(!lunchId){const r=pickRandom(avail('main').filter(r=>!usedMain.has(r.id)));if(r){lunchId=r.id;usedMain.add(r.id);}}
+    if(!dinnerId){const r=pickRandom([...avail('soup'),...avail('salad')].filter(r=>!usedMain.has(r.id)));if(r){dinnerId=r.id;usedMain.add(r.id);}}
+    if(!dinner2Id){const r=pickRandom([...avail('snack'),...avail('salad'),...avail('soup')].filter(r=>!usedMain.has(r.id)&&r.id!==dinnerId));if(r){dinner2Id=r.id;usedMain.add(r.id);}}
+    if(!dessertId){const r=pickRandom(avail('dessert').filter(r=>!usedDS.has(r.id)));if(r){dessertId=r.id;usedDS.add(r.id);}}
 
     const qBF=avail('breakfast').filter(r=>r.time<=10&&!usedBF.has(r.id));
     const aBF=avail('breakfast').filter(r=>!usedBF.has(r.id));
@@ -663,7 +689,8 @@ async function generateMenu(){
       breakfast:{recipeId:bf?.id,isLeftover:false},
       lunch:{recipeId:lunchId,isLeftover:lunchLeft},
       dinner:{recipeId:dinnerId,isLeftover:dinnerLeft},
-      snack_dessert:{recipeId:snackId,isLeftover:snackLeft},
+      dinner2:{recipeId:dinner2Id,isLeftover:dinner2Left},
+      snack_dessert:{recipeId:dessertId,isLeftover:dessertLeft},
     };
   }
 
@@ -756,7 +783,7 @@ function renderWeek(){
   const avgProt=mealCnt?Math.round(totProt/7):0;
   document.getElementById('stats-row').innerHTML=[
     {lbl:'Белок / день',val:avgProt,unit:'г',pct:Math.min(100,avgProt/1.5)},
-    {lbl:'Заполнено',val:mealCnt,unit:'/ 28',pct:mealCnt/28*100},
+    {lbl:'Заполнено',val:mealCnt,unit:'/ 35',pct:mealCnt/35*100},
     {lbl:'Кухни недели',val:cuisines.size,unit:'типа',pct:cuisines.size/5*100},
   ].map(s=>`<div class="stat-card">
     <div class="stat-lbl">${s.lbl}</div>
@@ -771,7 +798,11 @@ function openSwap(dayIdx,mealType){
   document.getElementById('swap-slot-name').textContent=DAYS_FULL[dayIdx]+' — '+MEAL_LABELS[mealType];
   // For snack_dessert slot show both snack and dessert recipes
   const mealFilter=mealType==='snack_dessert'
-    ?r=>getMeals(r).some(m=>m==='snack'||m==='dessert')&&!r.banned
+    ?r=>getMeals(r).includes('dessert')&&!r.banned
+    :mealType==='dinner'||mealType==='dinner2'
+    ?r=>getMeals(r).some(m=>['soup','salad','snack'].includes(m))&&!r.banned
+    :mealType==='lunch'
+    ?r=>getMeals(r).includes('main')&&!r.banned
     :r=>getMeals(r).includes(mealType)&&!r.banned;
   const opts=recipes.filter(mealFilter).sort((a,b)=>b.rating-a.rating).slice(0,10);
   document.getElementById('swap-options').innerHTML=opts.map(r=>`
@@ -845,9 +876,9 @@ function rateDetail(id,s){const r=getRecipe(id);if(r){r.rating=s;saveRecipes();o
 function toggleBan(id){const r=getRecipe(id);if(r){r.banned=!r.banned;saveRecipes();openDetail(id);renderRecipes();showToast(r.banned?'Исключён':'Возвращён в меню');}}
 
 // ── RECIPES PAGE ──────────────────────────────────────────────────────────
-const FILTER_LABELS={all:'Все',breakfast:'Завтраки',lunch:'Обеды',dinner:'Ужины',snack:'Перекусы',dessert:'Десерты',eu:'Европейская',fr:'Французская',it:'Итальянская',ru:'Русская',il:'Израильская',med:'Средиземноморская',th:'Тайская',us:'Американская',as:'Азиатская',mex:'Мексиканская',tr:'Турецкая',in:'Индийская',jp:'Японская',ko:'Корейская',uz:'Узбекская',ge:'Грузинская'};
+const FILTER_LABELS={all:'Все',breakfast:'Завтраки',main:'Основное блюдо',soup:'Супы',salad:'Салаты',snack:'Перекусы',dessert:'Десерты',eu:'Европейская',fr:'Французская',it:'Итальянская',ru:'Русская',il:'Израильская',med:'Средиземноморская',th:'Тайская',us:'Американская',as:'Азиатская',mex:'Мексиканская',tr:'Турецкая',in:'Индийская',jp:'Японская',ko:'Корейская',uz:'Узбекская',ge:'Грузинская'};
 
-const MEAL_FILTER_KEYS=['all','breakfast','lunch','dinner','snack','dessert'];
+const MEAL_FILTER_KEYS=['all','breakfast','main','soup','salad','snack','dessert'];
 const CUISINE_FILTER_KEYS=['eu','fr','it','ru','il','med','th','us','as','mex','tr','in','jp','ko','uz','ge'];
 
 function renderFilters(){
@@ -914,7 +945,7 @@ function resetAddForm(){
   document.getElementById('photo-input').value='';
   document.getElementById('photo-drop-txt').textContent='Загрузи фото или скриншот — ИИ распознает автоматически';
   document.getElementById('ai-status').style.display='none';
-  ['mc-breakfast','mc-lunch','mc-dinner','mc-snack','mc-dessert'].forEach(id=>document.getElementById(id).checked=id==='mc-lunch');
+  ['mc-breakfast','mc-main','mc-soup','mc-salad','mc-snack','mc-dessert'].forEach(id=>document.getElementById(id).checked=id==='mc-main');
   ['eq-stove','eq-oven','eq-airfryer','eq-blender','eq-microwave'].forEach(id=>document.getElementById(id).checked=id==='eq-stove');
   document.getElementById('tag-prot').checked=false;
   document.getElementById('tag-light').checked=true;
@@ -936,7 +967,7 @@ function editRecipe(id){
   document.getElementById('r-steps').value=r.steps;
   document.getElementById('r-cuisine').value=r.cuisine;
   const ms=getMeals(r);
-  ['mc-breakfast','mc-lunch','mc-dinner','mc-snack','mc-dessert'].forEach(id=>document.getElementById(id).checked=ms.includes(id.replace('mc-','')));
+  ['mc-breakfast','mc-main','mc-soup','mc-salad','mc-snack','mc-dessert'].forEach(id=>document.getElementById(id).checked=ms.includes(id.replace('mc-','')));
   ['eq-stove','eq-oven','eq-airfryer','eq-blender','eq-microwave'].forEach(id=>document.getElementById(id).checked=(r.equipment||[]).includes(id.replace('eq-','')));
   document.getElementById('tag-prot').checked=(r.tags||[]).includes('prot');
   document.getElementById('tag-light').checked=(r.tags||[]).includes('light');
@@ -981,7 +1012,7 @@ async function pasteJSON(){
     if(p.ingredients) document.getElementById('r-ingredients').value=p.ingredients;
     if(p.steps) document.getElementById('r-steps').value=p.steps;
     const ms=Array.isArray(p.meals)?p.meals:(p.meal?[p.meal]:[]);
-    if(ms.length)['mc-breakfast','mc-lunch','mc-dinner','mc-snack','mc-dessert'].forEach(id=>document.getElementById(id).checked=ms.includes(id.replace('mc-','')));
+    if(ms.length)['mc-breakfast','mc-main','mc-soup','mc-salad','mc-snack','mc-dessert'].forEach(id=>document.getElementById(id).checked=ms.includes(id.replace('mc-','')));
     if(Array.isArray(p.equipment))['eq-stove','eq-oven','eq-airfryer','eq-blender','eq-microwave'].forEach(id=>document.getElementById(id).checked=p.equipment.includes(id.replace('eq-','')));
     if(Array.isArray(p.tags)){document.getElementById('tag-prot').checked=p.tags.includes('prot');document.getElementById('tag-light').checked=p.tags.includes('light');document.getElementById('tag-sweet').checked=p.tags.includes('sweet');}
     showToast('JSON вставлен!');
@@ -1016,7 +1047,7 @@ async function handlePhotos(e){
     if(p.ingredients) document.getElementById('r-ingredients').value=p.ingredients;
     if(p.steps) document.getElementById('r-steps').value=p.steps;
     const ms=Array.isArray(p.meals)?p.meals:[];
-    if(ms.length)['mc-breakfast','mc-lunch','mc-dinner','mc-snack','mc-dessert'].forEach(id=>document.getElementById(id).checked=ms.includes(id.replace('mc-','')));
+    if(ms.length)['mc-breakfast','mc-main','mc-soup','mc-salad','mc-snack','mc-dessert'].forEach(id=>document.getElementById(id).checked=ms.includes(id.replace('mc-','')));
     if(Array.isArray(p.equipment))['eq-stove','eq-oven','eq-airfryer','eq-blender','eq-microwave'].forEach(id=>document.getElementById(id).checked=p.equipment.includes(id.replace('eq-','')));
     if(Array.isArray(p.tags)){document.getElementById('tag-prot').checked=p.tags.includes('prot');document.getElementById('tag-light').checked=p.tags.includes('light');document.getElementById('tag-sweet').checked=p.tags.includes('sweet');}
     showToast('ИИ распознал рецепт!');
@@ -1094,7 +1125,7 @@ async function bulkImport(e){
       if(p.error) throw new Error(p.error);
       if(!p.name) throw new Error('нет названия');
       const maxId=newR.reduce((m,r)=>Math.max(m,r.id),0);
-      newR.push({id:maxId+1,name:p.name,meals:Array.isArray(p.meals)?p.meals:['lunch'],cuisine:p.cuisine||'eu',protein:parseInt(p.protein)||20,time:parseInt(p.time)||30,tags:Array.isArray(p.tags)?p.tags:['light'],ingredients:p.ingredients||'',steps:p.steps||'',equipment:Array.isArray(p.equipment)?p.equipment:[],rating:3,banned:false,timesUsed:0});
+      newR.push({id:maxId+1,name:p.name,meals:Array.isArray(p.meals)?p.meals:['main'],cuisine:p.cuisine||'eu',protein:parseInt(p.protein)||20,time:parseInt(p.time)||30,tags:Array.isArray(p.tags)?p.tags:['light'],ingredients:p.ingredients||'',steps:p.steps||'',equipment:Array.isArray(p.equipment)?p.equipment:[],rating:3,banned:false,timesUsed:0});
       added++;
       row.className='bulk-item bulk-ok';
       row.innerHTML=`<span>✓</span> ${p.name} <span style="color:var(--muted);font-size:11px;margin-left:auto">${p.protein}г · ${p.time}мин</span>`;

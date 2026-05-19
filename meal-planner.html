@@ -642,7 +642,11 @@ async function generateMenu(){
     if(di2){usedMain.add(di2.id);di2.timesUsed++;}
     if(ds) usedDS.add(ds.id);
 
-    cookMeals[d]={lunchId:lu?.id,dinnerId:di1?.id,dinner2Id:di2?.id,dessertId:ds?.id};
+    cookMeals[d]={lunchId:lu?.id,dinnerId:di1?.id,dinner2Id:di2?.id,dessertId:ds?.id,
+      // Mark if dinner slots are salads — salads never become leftovers
+      dinnerIsSalad:di1?getMeals(di1).includes('salad'):false,
+      dinner2IsSalad:di2?getMeals(di2).includes('salad'):false,
+    };
     newMenu[d]={
       breakfast:{recipeId:bf?.id,isLeftover:false},
       lunch:{recipeId:lu?.id,isLeftover:false},
@@ -663,21 +667,37 @@ async function generateMenu(){
       if(!leftGiven[prevCook].lunch&&cookMeals[prevCook]?.lunchId){
         lunchId=cookMeals[prevCook].lunchId;leftGiven[prevCook].lunch=true;lunchLeft=true;
       }
-      if(!leftGiven[prevCook].dinner&&cookMeals[prevCook]?.dinnerId){
+      // Dinner 1: skip if it's a salad — salads don't keep
+      if(!leftGiven[prevCook].dinner&&cookMeals[prevCook]?.dinnerId&&!cookMeals[prevCook].dinnerIsSalad){
         dinnerId=cookMeals[prevCook].dinnerId;leftGiven[prevCook].dinner=true;dinnerLeft=true;
+      } else {
+        leftGiven[prevCook].dinner=true; // mark as used so we don't try again
       }
-      if(!leftGiven[prevCook].dinner2&&cookMeals[prevCook]?.dinner2Id){
+      // Dinner 2: skip if it's a salad
+      if(!leftGiven[prevCook].dinner2&&cookMeals[prevCook]?.dinner2Id&&!cookMeals[prevCook].dinner2IsSalad){
         dinner2Id=cookMeals[prevCook].dinner2Id;leftGiven[prevCook].dinner2=true;dinner2Left=true;
+      } else {
+        leftGiven[prevCook].dinner2=true;
       }
       if(!leftGiven[prevCook].dessert&&cookMeals[prevCook]?.dessertId){
         dessertId=cookMeals[prevCook].dessertId;leftGiven[prevCook].dessert=true;dessertLeft=true;
       }
     }
 
-    // If second non-cook day after same cook day — pick fresh
+    // Pick fresh for any empty slots (salads skipped, second non-cook day, etc.)
     if(!lunchId){const r=pickRandom(avail('main').filter(r=>!usedMain.has(r.id)));if(r){lunchId=r.id;usedMain.add(r.id);}}
-    if(!dinnerId){const r=pickRandom([...avail('soup'),...avail('salad')].filter(r=>!usedMain.has(r.id)));if(r){dinnerId=r.id;usedMain.add(r.id);}}
-    if(!dinner2Id){const r=pickRandom([...avail('snack'),...avail('salad'),...avail('soup')].filter(r=>!usedMain.has(r.id)&&r.id!==dinnerId));if(r){dinner2Id=r.id;usedMain.add(r.id);}}
+    // For dinner: pick fresh salad (always fresh) or soup
+    if(!dinnerId){
+      // Prefer a fresh salad since it can't be leftover anyway
+      const freshSalads=avail('salad').filter(r=>!usedMain.has(r.id));
+      const freshSoups=avail('soup').filter(r=>!usedMain.has(r.id));
+      const r=pickRandom(freshSalads.length?freshSalads:freshSoups.length?freshSoups:[...avail('soup'),...avail('salad')]);
+      if(r){dinnerId=r.id;usedMain.add(r.id);}
+    }
+    if(!dinner2Id){
+      const r=pickRandom([...avail('snack'),...avail('salad'),...avail('soup')].filter(r=>!usedMain.has(r.id)&&r.id!==dinnerId));
+      if(r){dinner2Id=r.id;usedMain.add(r.id);}
+    }
     if(!dessertId){const r=pickRandom(avail('dessert').filter(r=>!usedDS.has(r.id)));if(r){dessertId=r.id;usedDS.add(r.id);}}
 
     const qBF=avail('breakfast').filter(r=>r.time<=10&&!usedBF.has(r.id));

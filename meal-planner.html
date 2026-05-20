@@ -622,13 +622,19 @@ async function generateMenu(){
     const avD1=avail(d1type).filter(r=>!usedMain.has(r.id));
     const di1=pickRandom(avD1.length?avD1:avail(d1type));
 
-    // Dinner slot 2: must be DIFFERENT category from slot 1
-    // soup→snack or salad, salad→snack or soup
-    const d2types=d1type==='soup'?['snack','salad']:['snack','soup'];
+    // Dinner slot 2: MUST be a DIFFERENT type from slot 1
+    // If d1 is soup → d2 must be salad or snack (never soup)
+    // If d1 is salad → d2 must be soup or snack (never salad)
+    const d1actualTypes=di1?getMeals(di1):[];
+    const d1isSoup=d1actualTypes.includes('soup');
+    const d1isSalad=d1actualTypes.includes('salad');
+    // Build priority list of allowed types for slot 2
+    const d2allowed=d1isSoup?['salad','snack']:d1isSalad?['soup','snack']:['soup','salad','snack'];
     let di2=null;
-    for(const t of d2types){
-      const av=avail(t).filter(r=>!usedMain.has(r.id)&&(!di1||r.id!==di1.id));
-      const r=pickRandom(av.length?av:avail(t).filter(r=>!di1||r.id!==di1.id));
+    for(const t of d2allowed){
+      const pool=avail(t).filter(r=>!usedMain.has(r.id)&&(!di1||r.id!==di1.id));
+      const fallback=avail(t).filter(r=>!di1||r.id!==di1.id);
+      const r=pickRandom(pool.length?pool:fallback);
       if(r){di2=r;break;}
     }
 
@@ -695,8 +701,16 @@ async function generateMenu(){
       if(r){dinnerId=r.id;usedMain.add(r.id);}
     }
     if(!dinner2Id){
-      const r=pickRandom([...avail('snack'),...avail('salad'),...avail('soup')].filter(r=>!usedMain.has(r.id)&&r.id!==dinnerId));
-      if(r){dinner2Id=r.id;usedMain.add(r.id);}
+      // Must be different type from dinner slot 1
+      const d1r=dinnerId?getRecipe(dinnerId):null;
+      const d1types=d1r?getMeals(d1r):[];
+      const d2allowed2=d1types.includes('soup')?['salad','snack']:d1types.includes('salad')?['soup','snack']:['soup','salad','snack'];
+      for(const t of d2allowed2){
+        const pool=[...avail(t)].filter(r=>!usedMain.has(r.id)&&r.id!==dinnerId);
+        const fallback=avail(t).filter(r=>r.id!==dinnerId);
+        const r=pickRandom(pool.length?pool:fallback);
+        if(r){dinner2Id=r.id;usedMain.add(r.id);break;}
+      }
     }
     if(!dessertId){const r=pickRandom(avail('dessert').filter(r=>!usedDS.has(r.id)));if(r){dessertId=r.id;usedDS.add(r.id);}}
 

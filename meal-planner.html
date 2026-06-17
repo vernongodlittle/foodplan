@@ -401,6 +401,28 @@ const SH={'Content-Type':'application/json','apikey':SUPA_KEY,'Authorization':'B
 async function dbGet(key){try{const r=await fetch(`${SUPA_URL}/rest/v1/app_state?key=eq.${key}`,{headers:SH});const d=await r.json();return d?.[0]?.data||null;}catch{return null;}}
 async function dbSet(key,data){try{await fetch(`${SUPA_URL}/rest/v1/app_state`,{method:'POST',headers:SH,body:JSON.stringify({key,data,updated_at:new Date().toISOString()})});}catch(e){console.warn(e);}}
 
+// Lightweight keepalive ping — touches the DB so Supabase free-tier doesn't
+// auto-pause the project after 7 days of inactivity. Fire-and-forget, no UI impact.
+async function pingKeepAlive(){
+  try{
+    await fetch(`${SUPA_URL}/rest/v1/app_state?key=eq.recipes&select=key`,{headers:SH});
+    localStorage.setItem('nedelia_last_ping',Date.now().toString());
+  }catch(e){/* silent — next page load or interval will retry */}
+}
+
+// Safe version: returns {ok:true, data} only if the HTTP request itself succeeded.
+// ok:false means network/server error — caller must NOT treat this as "no data" and must NOT overwrite cloud.
+async function dbGetSafe(key){
+  try{
+    const r=await fetch(`${SUPA_URL}/rest/v1/app_state?key=eq.${key}`,{headers:SH});
+    if(!r.ok) return {ok:false,data:null};
+    const d=await r.json();
+    return {ok:true,data:d?.[0]?.data||null};
+  }catch(e){
+    return {ok:false,data:null};
+  }
+}
+
 // ── CONSTANTS ─────────────────────────────────────────────────────────────
 const MEAL_LABELS={breakfast:'Завтрак',main:'Основное блюдо',soup:'Суп',salad:'Салат',snack:'Перекус',dessert:'Десерт',dinner:'Ужин',dinner2:'Ужин 2',snack_dessert:'Десерт'};
 const CUISINE_LABELS={eu:'Европейская',fr:'Французская',it:'Итальянская',ru:'Русская',il:'Израильская',med:'Средиземноморская',th:'Тайская',us:'Американская',as:'Азиатская',mex:'Мексиканская',tr:'Турецкая',in:'Индийская',jp:'Японская',ko:'Корейская',uz:'Узбекская',ge:'Грузинская'};
@@ -454,6 +476,7 @@ let activeMealFilter='all'; // 'all' or one of MEAL_FILTER_KEYS
 let activeCuisineFilter='all'; // 'all' or one of CUISINE_FILTER_KEYS
 let currentSwapSlot=null;
 let editingId=null;
+let syncStatusGlobal='ok';
 
 // ── WEEK KEY & MIGRATION (must be defined before use) ────────────────────
 function getWeekKey(offset){
@@ -496,6 +519,7 @@ const fmtDate=d=>d.getDate()+' '+MONTHS[d.getMonth()];
 
 // ── SYNC STATUS ───────────────────────────────────────────────────────────
 function setSyncStatus(s){
+  syncStatusGlobal=s;
   const el=document.getElementById('sync-status');
   el.className='sync-txt sync-'+s;
   el.textContent=s==='ok'?'☁ sync':s==='syncing'?'↑ ...':'✕ err';
@@ -503,23 +527,48 @@ function setSyncStatus(s){
 
 async function saveRecipes(){
   setSyncStatus('syncing');
-  localStorage.setItem('nedelia_v3',JSON.stringify({recipes,allMenus,shoppingChecked,nextId}));
+  localStorage.setItem('nedelia_v4',JSON.stringify({recipes,allMenus,shoppingChecked,nextId}));
   await dbSet('recipes',{recipes,nextId});
   setSyncStatus('ok');
 }
 
 async function saveMenu(){
-  localStorage.setItem('nedelia_v3',JSON.stringify({recipes,allMenus,shoppingChecked,nextId}));
+  localStorage.setItem('nedelia_v4',JSON.stringify({recipes,allMenus,shoppingChecked,nextId}));
   await dbSet('menu',{allMenus,shoppingChecked});
 }
 
 async function loadCloud(){
   setSyncStatus('syncing');
-  const [rData,mData]=await Promise.all([dbGet('recipes'),dbGet('menu')]);
-  if(rData?.recipes?.length){recipes=rData.recipes;nextId=rData.nextId||recipes.reduce((m,r)=>Math.max(m,r.id),0)+1;}
-  else{recipes=DEFAULT_RECIPES.map(r=>({...r}));await dbSet('recipes',{recipes,nextId});}
-  if(mData?.allMenus) allMenus=migrateMenu(mData.allMenus);
-  if(mData?.shoppingChecked) shoppingChecked=mData.shoppingChecked;
+  let rResult,mResult;
+  try{
+    [rResult,mResult]=await Promise.all([dbGetSafe('recipes'),dbGetSafe('menu')]);
+  }catch(e){
+    // Network/connection failure — do NOT touch cloud, keep local data as-is
+    console.warn('loadCloud failed, keeping local data',e);
+    setSyncStatus('err');
+    return;
+  }
+
+  // rResult.ok=false means the request itself failed (network/RLS/etc) — never overwrite cloud in that case
+  if(!rResult.ok){
+    console.warn('Could not reach recipes table — keeping existing local data, NOT overwriting cloud');
+    setSyncStatus('err');
+    return;
+  }
+
+  if(rResult.data?.recipes?.length){
+    recipes=rResult.data.recipes;
+    nextId=rResult.data.nextId||recipes.reduce((m,r)=>Math.max(m,r.id),0)+1;
+  } else if(!recipes.length){
+    // Cloud genuinely empty (confirmed reachable, no error) AND we have nothing locally either
+    // → safe to seed defaults for a brand-new install
+    recipes=DEFAULT_RECIPES.map(r=>({...r}));
+    await dbSet('recipes',{recipes,nextId});
+  }
+  // If cloud is empty but we DO have local recipes already loaded — keep them, don't seed/overwrite
+
+  if(mResult?.ok&&mResult.data?.allMenus) allMenus=migrateMenu(mResult.data.allMenus);
+  if(mResult?.ok&&mResult.data?.shoppingChecked) shoppingChecked=mResult.data.shoppingChecked;
   setSyncStatus('ok');
 }
 
@@ -1196,6 +1245,7 @@ document.addEventListener('DOMContentLoaded',async function(){
     const raw=localStorage.getItem('nedelia_v4');
     if(raw){const d=JSON.parse(raw);recipes=d.recipes||[];allMenus=migrateMenu(d.allMenus)||{};shoppingChecked=d.shoppingChecked||{};nextId=d.nextId||26;}
   }catch(e){}
+  const hadLocalRecipes=recipes.length>0;
   if(!recipes.length) recipes=DEFAULT_RECIPES.map(r=>({...r}));
 
   weekOffset=0;
@@ -1213,6 +1263,7 @@ document.addEventListener('DOMContentLoaded',async function(){
 
   // Load from Supabase in background
   await loadCloud();
+  pingKeepAlive(); // mark activity on every visit
   localStorage.setItem('nedelia_v4',JSON.stringify({recipes,allMenus,shoppingChecked,nextId}));
   renderWeek();
   renderFilters();
@@ -1222,7 +1273,11 @@ document.addEventListener('DOMContentLoaded',async function(){
   } else {
     buildShoppingList();
   }
-  showToast('Загружено '+recipes.length+' рецептов');
+  if(syncStatusGlobal==='err'&&hadLocalRecipes){
+    showToast('⚠ Облако недоступно — показаны локальные данные ('+recipes.length+' рецептов)');
+  } else {
+    showToast('Загружено '+recipes.length+' рецептов');
+  }
 
   // Autosave locally every 5s
   setInterval(()=>{try{localStorage.setItem('nedelia_v4',JSON.stringify({recipes,allMenus,shoppingChecked,nextId}));}catch(e){}},5000);

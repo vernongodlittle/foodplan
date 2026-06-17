@@ -585,6 +585,40 @@ function extractName(ing){
     .replace(/\s+\d+$/,'').trim();
 }
 
+// Words that just qualify the ingredient but shouldn't split it into a separate item
+const DROP_QUALIFIERS=['крупные','крупный','крупная','свежий','свежая','свежие','фермерский','фермерская','домашний','домашняя','порошок','сухой','сухая','молотый','молотая','цельный','цельная','очищенный','очищенная','нарезанный','нарезанная'];
+
+// Manual singular/plural and synonym mapping for common ingredients
+const NORMALIZE_MAP=[
+  [/^яйца?$/i,'яйца'],
+  [/^яйцо$/i,'яйца'],
+  [/^помидоры?$/i,'помидоры'],
+  [/^томаты?$/i,'помидоры'],
+  [/^лук(\s|$)/i,'лук'],
+  [/^огурцы?$/i,'огурцы'],
+  [/^картофель$/i,'картофель'],
+  [/^картошка$/i,'картофель'],
+  [/^морковь$/i,'морковь'],
+  [/^морковка$/i,'морковь'],
+];
+
+function normalizeIngredientName(raw){
+  let name=raw.trim();
+  // Remove qualifier words. \b doesn't work reliably with Cyrillic in JS regex,
+  // so we match using explicit start/space and end/space boundaries instead.
+  DROP_QUALIFIERS.forEach(q=>{
+    name=name.replace(new RegExp('(^|\\s)'+q+'(\\s|$)','ig'),' ').trim();
+  });
+  name=name.replace(/\s{2,}/g,' ').trim();
+  if(!name) name=raw.trim(); // fallback if we stripped everything
+
+  // Apply singular/plural + synonym normalization on the FULL string first
+  for(const [pattern,replacement] of NORMALIZE_MAP){
+    if(pattern.test(name)){ name=replacement+name.slice(name.match(pattern)[0].length); name=name.trim(); break; }
+  }
+  return name;
+}
+
 function categorise(items){
   const c={protein:[],dairy:[],produce:[],grains:[],spices:[],other:[]};
   items.forEach(item=>{
@@ -608,8 +642,10 @@ function buildShoppingList(){
       if(!slot?.recipeId||slot.isLeftover) return;
       const r=getRecipe(slot.recipeId);if(!r) return;
       r.ingredients.split(',').forEach(ing=>{
-        const name=extractName(ing);const key=name.toLowerCase();
-        if(key) all[key]=name;
+        const rawName=extractName(ing);
+        const normalized=normalizeIngredientName(rawName);
+        const key=normalized.toLowerCase();
+        if(key) all[key]=normalized;
       });
     });
   });
